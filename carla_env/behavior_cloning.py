@@ -21,10 +21,6 @@ def behavior_cloning(args: EnvArguments):
         print("Please pass your carla IP address")
         return
 
-    # Resnet18, variables = pretrained_resnet(18)
-    # model_def = nn.Sequential(Resnet18().layers[:11])
-    # variables = slice_variables(variables, 0, 11)
-    # image_model = Model.create(model_def, params=variables)
     data_path = args.data_path
     if data_path is not None and os.path.exists(data_path):
         datasets = [
@@ -59,11 +55,14 @@ def behavior_cloning(args: EnvArguments):
     if datasets is not None and model.replay_buffer is not None:
         for dataset in tqdm.tqdm(datasets):
             for i in range(dataset["observations"]["sensor"].shape[0] - 1):
-                action = np.zeros(2)
-                action[0] = dataset["actions"][i][0] - dataset["actions"][i][2]
-                action[1] = dataset["actions"][i][1]
-                info = dataset["infos"][i]
-                info["expert_action"] = action
+                action = np.array([
+                    dataset["actions"][i][0] - dataset["actions"][i][2],
+                    dataset["actions"][i][1],
+                ])
+                info = {
+                    **dataset["infos"][i],
+                    "expert_action": action,
+                }
                 task = dataset["observations"]["task"][i]
                 next_task = dataset["observations"]["task"][i + 1]
                 model.replay_buffer.add(

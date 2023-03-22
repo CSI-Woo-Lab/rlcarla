@@ -206,8 +206,6 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
         return seed
 
     def compute_action(self):
-        if self.agent is None:
-            return None
         return self.agent.run_step()
 
     def reset_vehicle(self):

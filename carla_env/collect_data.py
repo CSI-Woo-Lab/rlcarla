@@ -1,4 +1,10 @@
-"""python collect_data.py"""
+"""python collect_data.py
+
+example call:
+./PythonAPI/util/config.py --map Town01 --delta-seconds 0.05
+python PythonAPI/carla/agents/navigation/data_collection_agent.py \
+    --vision_size 256 --vision_fov 90 --steps 10000 --weather --lights
+"""
 
 import os
 from typing import Any, List
@@ -15,10 +21,6 @@ Params = flax.core.FrozenDict[str, Any]
 
 
 def collect_data(args: EnvArguments):
-    # example call:
-    # ./PythonAPI/util/config.py --map Town01 --delta-seconds 0.05
-    # python PythonAPI/carla/agents/navigation/data_collection_agent.py \
-    #   --vision_size 256 --vision_fov 90 --steps 10000 --weather --lights
     if args.carla_ip is None:
         print("Please pass your carla IP address")
         return
