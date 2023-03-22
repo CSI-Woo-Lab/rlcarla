@@ -7,6 +7,7 @@ from dotmap import DotMap
 
 from carla_env.envs.base import BaseCarlaEnv
 from utils.cart import cart2pol
+from utils.lidar import generate_lidar_bin
 
 
 class DCCarlaEnv(BaseCarlaEnv):
@@ -123,42 +124,7 @@ class DCCarlaEnv(BaseCarlaEnv):
 
         # Advance the simulation and wait for the data.
         _, lidar_sensor = self.sync_mode.tick(timeout=10.0)
-
-        # Format rl lidar
-        lidar = np.frombuffer(lidar_sensor.raw_data, dtype=np.float32).reshape((-1, 4))
-
-        # (x,y,z) to (min_dist,theta,z)
-        lidar_xy = lidar[:, :2]
-        lidar_z = lidar[:, 2]
-
-        lidar_xy_cart2pol = np.array(
-            list(map(lambda x: cart2pol(x[0], x[1]), lidar_xy))
-        )
-        lidar_z = np.expand_dims(lidar_z, axis=1)
-        lidar_cylinder = np.concatenate((lidar_xy_cart2pol, lidar_z), axis=1)
-
-        lidar_bin = []
-        empty_cnt = 0
-        # discretize theta
-        for i in range(-1 * int(self.num_theta_bin / 2), int(self.num_theta_bin / 2)):
-            low_deg = 2 * i * np.pi / self.num_theta_bin
-            high_deg = 2 * (i + 1) * np.pi / self.num_theta_bin
-            points = lidar_cylinder[
-                (lidar_cylinder[:, 1] > low_deg) * (lidar_cylinder[:, 1] < high_deg)
-            ][:, 0]
-
-            if not points.any():
-                # print(f'{i} ~ {i+1} bin is empty')
-                empty_cnt += 1
-                lidar_bin.append(np.array([self.range]))
-            else:
-                max_idx = points.argmax()  # standard (x,y) or (x,y,z)
-                lidar_bin.append(
-                    lidar_cylinder[
-                        (lidar_cylinder[:, 1] > low_deg)
-                        * (lidar_cylinder[:, 1] < high_deg)
-                    ][max_idx][0]
-                )
+        lidar_bin = generate_lidar_bin(lidar_sensor, self.num_theta_bin, self.range)
 
         reward, reward_dict, done_dict = self.goal_reaching_reward(self.vehicle)
 
