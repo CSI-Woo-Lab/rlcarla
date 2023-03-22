@@ -1,14 +1,10 @@
-import time
-
 import carla
 import gym
 import gym.spaces
 import numpy as np
 
 from carla_env.envs.base import BaseCarlaEnv
-from utils.carla_sync_mode import CarlaSyncMode
 from utils.cart import cart2pol
-from utils.roaming_agent import RoamingAgent
 from utils.sensors import CollisionSensor, LaneInvasionSensor
 
 

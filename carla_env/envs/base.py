@@ -5,7 +5,6 @@ import os
 import pickle as pkl
 import random
 import time
-from typing import Optional
 
 import carla
 import gym
@@ -397,9 +396,9 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
                 vehicle.get_transform(),
                 self._proximity_threshold / 10.0,
             ):
-                return (True, -1.0, target_vehicle)
+                return True, -1.0, target_vehicle
 
-        return (False, 0.0, None)
+        return False, 0.0, None
 
     def _is_object_hazard(self, vehicle, object_list):
         """
@@ -433,9 +432,9 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
                 vehicle.get_transform(),
                 self._proximity_threshold / 40.0,
             ):
-                return (True, -1.0, target_vehicle)
+                return True, -1.0, target_vehicle
 
-        return (False, 0.0, None)
+        return False, 0.0, None
 
     def _get_trafficlight_trigger_location(
         self, traffic_light
@@ -497,9 +496,9 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
                 self._traffic_light_threshold,
             ):
                 if traffic_light.state == carla.TrafficLightState.Red:
-                    return (True, -0.1, traffic_light)
+                    return True, -0.1, traffic_light
 
-        return (False, 0.0, None)
+        return False, 0.0, None
 
     def _get_collision_reward(self, vehicle):
         vehicle_hazard, reward, _ = self._is_vehicle_hazard(

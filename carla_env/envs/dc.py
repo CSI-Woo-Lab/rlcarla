@@ -1,6 +1,5 @@
 import datetime
 import os
-import time
 
 import carla
 import numpy as np
@@ -110,8 +109,6 @@ class DCCarlaEnv(BaseCarlaEnv):
             # brake = clamp(brake, minimum=0.000, maximum=0.995) + np.random.uniform(low=-0.005, high=0.005)
             if float(brake) < 0.01:
                 brake = 0.0
-            else:
-                brake = brake
 
             vehicle_control = carla.VehicleControl(
                 throttle=throttle,  # [0,1]
@@ -125,7 +122,7 @@ class DCCarlaEnv(BaseCarlaEnv):
             self.vehicle.apply_control(vehicle_control)
 
         # Advance the simulation and wait for the data.
-        snapshot, lidar_sensor = self.sync_mode.tick(timeout=10.0)
+        _, lidar_sensor = self.sync_mode.tick(timeout=10.0)
 
         # Format rl lidar
         lidar = np.frombuffer(lidar_sensor.raw_data, dtype=np.float32).reshape((-1, 4))
