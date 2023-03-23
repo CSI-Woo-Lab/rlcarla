@@ -5,22 +5,32 @@ import os
 import pickle as pkl
 import random
 import time
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 import carla
 import gym
 import gym.spaces
 import numpy as np
 import pygame
+from dotmap import DotMap
+from typing_extensions import TypedDict
 
 from agents.navigation.global_route_planner_dao import GlobalRoutePlannerDAO
 from agents.tools.misc import is_within_distance_ahead
+from carla_env.envs.utils import build_goal_candidate
 from utils.arguments import EnvArguments
 from utils.carla_sync_mode import CarlaSyncMode
 from utils.roaming_agent import RoamingAgent
 from utils.route_planner import CustomGlobalRoutePlanner
 
 
-class BaseCarlaEnv(abc.ABC, gym.Env):
+class CarlaObservation(TypedDict):
+    obs: np.ndarray
+    task: np.ndarray
+    module_select: np.ndarray
+
+
+class BaseCarlaEnv(abc.ABC, gym.Env[Dict[str, gym.spaces.Space], np.ndarray]):
     OBS_IDX = {
         "control": np.array([0, 1, 2]),
         "acceleration": np.array([3, 4, 5]),
@@ -35,7 +45,7 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
     def __init__(
         self,
         args: EnvArguments,
-        image_model,
+        image_model: Optional[Any],
         weather: str,
         carla_ip: str,
         carla_port: int,
@@ -43,22 +53,20 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
         # New Hyperparameter
         self.random_route = args.random_route
         self.image_model = image_model
-        self.record_display = False
-        self.record_dir = "./carla_data"
         self.weather = weather
+
+        self.record_dir = "./carla_data"
+
+        self.vision_size = args.vision_size
+        self.vision_fov = args.vision_fov
 
         self.frame_skip = args.frame_skip
         self.max_episode_steps = args.steps
         self.multiagent = args.multiagent
         self.start_lane = args.lane
         self.follow_traffic_lights = args.lights
-        self.mode = args.mode
-        if self.record_display:
-            assert self.render_display
         self.route = 1
         self.route_list = args.route_list
-        self.video = None
-        self.actor_list = []
 
         self.client = carla.Client(carla_ip, carla_port)
         self.client.set_timeout(10.0)
@@ -88,10 +96,8 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
             print("Warning: removing old sensor")
             sensor.destroy()
 
-        self.vehicle = None
-        self.vehicles_list = []  # their ids
+        self.vehicle_ids: List[int] = []  # their ids
         self.reset_vehicle()  # creates self.vehicle
-        self.actor_list.append(self.vehicle)
 
         blueprint_library = self.world.get_blueprint_library()
 
@@ -111,8 +117,6 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
         self.lidar_obj = self.get_lidar_sensor()
         location = carla.Location(x=1.6, z=1.7)
 
-        self.reward_range = None
-        self.metadata = None
         self.lidar_sensor = self.world.try_spawn_actor(
             self.lidar_obj,
             carla.Transform(location, carla.Rotation(yaw=0.0)),
@@ -132,20 +136,18 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
         self._proximity_threshold = 10.0
         self._traffic_light_threshold = 5.0
         self.actor_list = self.world.get_actors()
-        for idx in range(len(self.actor_list)):
-            print(idx, self.actor_list[idx])
+        for idx, actor in enumerate(self.actor_list):
+            print(idx, actor)
 
-        self.vehicle_list = self.actor_list.filter("*vehicle*")
-        self.lights_list = self.actor_list.filter("*traffic_light*")
-        self.object_list = self.actor_list.filter("*traffic.*")
+        self.vehicle_list: List[carla.Vehicle] \
+            = self.actor_list.filter("*vehicle*")
+        self.lights_list: List[carla.TrafficLight] \
+            = self.actor_list.filter("*traffic_light*")
+        self.object_list: List[carla.Vehicle] \
+            = self.actor_list.filter("*traffic.*")
 
         ## Initialize the route planner
         self.route_planner.setup()
-
-        ## The map is deterministic so for reward relabelling, we can
-        ## instantiate the environment object and then query the distance function
-        ## in the env, which directly uses this map_graph, and we need not save it.
-        self._map_graph = self.route_planner._graph
 
         ## This is a dummy for the target location, we can make this an input
         ## to the env in RL code.
@@ -154,28 +156,24 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
         ## Now reset the env once
         self.reset()
 
-    def get_lidar_sensor(self, role_name="lidar"):  # @
+    def get_lidar_sensor(self, role_name: str = "lidar") -> carla.ActorBlueprint:  # @
         # set the attributes, all values set as strings
-        self.lidar_obj.set_attribute("upper_fov", str(self.upper_fov))
-        self.lidar_obj.set_attribute("lower_fov", str(self.lower_fov))
-        self.lidar_obj.set_attribute("rotation_frequency", str(self.rotation_frequency))
-        self.lidar_obj.set_attribute("range", str(self.range))
+        attributes = [
+            "upper_fov",
+            "lower_fov",
+            "rotation_frequency",
+            "range",
+            "dropoff_general_rate",
+            "dropoff_intersity_limit",
+            "dropoff_zero_intensity",
+            "points_per_second",
+        ]
 
-        # self.lidar_obj.set_attribute("role_name", role_name)
-        self.lidar_obj.set_attribute(
-            "dropoff_general_rate", str(self.dropoff_general_rate)
-        )
-        self.lidar_obj.set_attribute(
-            "dropoff_intensity_limit", str(self.dropoff_intensity_limit)
-        )
-        self.lidar_obj.set_attribute(
-            "dropoff_zero_intensity", str(self.dropoff_zero_intensity)
-        )
-        self.lidar_obj.set_attribute("points_per_second", str(self.points_per_second))
-
+        for attr in attributes:
+            self.lidar_obj.set_attribute(attr, str(getattr(self, attr)))
         return self.lidar_obj
 
-    def _init(self):
+    def _init(self) -> None:
         ...
 
     def reset_init(self):
@@ -194,7 +192,6 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
         self.agent._local_planner.set_global_plan(waypoint_list)
 
         self.count = 0
-        self.ts = int(time.time())
 
     def reset(self):
         # get obs:
@@ -204,15 +201,21 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
     def seed(self, seed: int):
         return seed
 
-    def compute_action(self):
+    def compute_action(self) -> Tuple[
+        carla.VehicleControl,
+        Union[Tuple[Literal[True], carla.Actor], Tuple[Literal[False], None]],
+    ]:
         return self.agent.run_step()
 
-    def reset_vehicle(self):
+    def reset_vehicle(self) -> List[carla.Waypoint]:
+        waypoint_list: List[carla.Waypoint]
+
         if self.map.name == "Town04":
             start_x = 5.0
             vehicle_init_transform = carla.Transform(
                 carla.Location(x=start_x, y=0, z=0.1), carla.Rotation(yaw=-90)
             )
+            waypoint_list = []
         else:
             init_transforms = self.world.get_map().get_spawn_points()
 
@@ -243,32 +246,31 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
 
             if self.random_route:
                 vehicle_init_transform = random.choice(init_transforms)
-
-                goal_candidate = []
-                for ts in self.world.get_map().get_spawn_points():
-                    if ts.location.distance(vehicle_init_transform.location) > 150:
-                        goal_candidate.append(ts)
-                try:
-                    self.target_location = np.random.choice(goal_candidate).location
-                except:
-                    for ts in self.world.get_map().get_spawn_points():
-                        if ts.location.distance(vehicle_init_transform.location) > 100:
-                            goal_candidate.append(ts)
-                    self.target_location = np.random.choice(goal_candidate).location
+                goal_candidate = build_goal_candidate(
+                    self.world, vehicle_init_transform.location
+                )
+                if not goal_candidate:
+                    goal_candidate = build_goal_candidate(
+                        self.world, vehicle_init_transform.location, threshold=100
+                    )
+                self.target_location = random.choice(goal_candidate).location
 
             waypoint_list = self.route_planner.trace_route(
                 vehicle_init_transform.location, self.target_location
             )
 
-        # TODO(aviral): start lane not defined for town, also for the town, we may not want to have
-        # the lane following reward, so it should be okay.
+        # TODO(aviral): start lane not defined for town, also for the town, we may not
+        # want to have the lane following reward, so it should be okay.
 
-        if self.vehicle is None:  # then create the ego vehicle
+        if not hasattr(self, "vehicle"):  # then create the ego vehicle
             blueprint_library = self.world.get_blueprint_library()
             vehicle_blueprint = blueprint_library.find("vehicle.audi.a2")
-            self.vehicle = self.world.spawn_actor(
+            vehicle = self.world.spawn_actor(
                 vehicle_blueprint, vehicle_init_transform
             )
+            if not isinstance(vehicle, carla.Vehicle):
+                raise ValueError
+            self.vehicle = vehicle
 
         self.vehicle.set_transform(vehicle_init_transform)
         self.vehicle.set_target_velocity(carla.Vector3D())
@@ -282,43 +284,45 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
 
         # clear out old vehicles
         self.client.apply_batch(
-            [carla.command.DestroyActor(x) for x in self.vehicles_list]
+            [carla.command.DestroyActor(x) for x in self.vehicle_ids]
         )
         self.world.tick()
         # self.sensor.tick()
-        self.vehicles_list = []
+        self.vehicle_ids = []
 
         traffic_manager = self.client.get_trafficmanager()
         traffic_manager.set_global_distance_to_leading_vehicle(2.0)
         traffic_manager.set_synchronous_mode(True)
-        blueprints = self.world.get_blueprint_library().filter("vehicle.*")
         blueprints = [
-            x for x in blueprints if int(x.get_attribute("number_of_wheels")) == 4
+            actor
+            for actor in self.world.get_blueprint_library().filter("vehicle.*")
+            if int(actor.get_attribute("number_of_wheels")) == 4
         ]
 
         num_vehicles = 20
         if self.map.name == "Town04":
             road_id = 47
             road_length = 117.0
-            init_transforms = []
-            for _ in range(num_vehicles):
-                lane_id = random.choice([-1, -2, -3, -4])
-                vehicle_s = np.random.uniform(road_length)  # length of road 47
-                init_transforms.append(
-                    self.map.get_waypoint_xodr(road_id, lane_id, vehicle_s).transform
-                )
+            init_transforms = [
+                self.map.get_waypoint_xodr(
+                    road_id,
+                    random.choice([-1, -2, -3, -4]),
+                    np.random.uniform(road_length)
+                ).transform
+                for _ in range(num_vehicles)
+            ]
         else:
             init_transforms = self.world.get_map().get_spawn_points()
-            init_transforms = np.random.choice(init_transforms, num_vehicles)
+            init_transforms = random.choices(init_transforms, k=num_vehicles)
 
         # --------------
         # Spawn vehicles
         # --------------
-        batch = []
+        batch: List[carla.command.SpawnActor] = []
         for transform in init_transforms:
-            transform.location.z += (
-                0.1  # otherwise can collide with the road it starts on
-            )
+            # otherwise can collide with the road it starts on
+            transform.location.z += 0.1
+
             blueprint = random.choice(blueprints)
             if blueprint.has_attribute("color"):
                 color = random.choice(
@@ -331,25 +335,32 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
                 )
                 blueprint.set_attribute("driver_id", driver_id)
             blueprint.set_attribute("role_name", "autopilot")
+
             batch.append(
                 carla.command.SpawnActor(blueprint, transform).then(
-                    carla.command.SetAutopilot(carla.command.FutureActor, True)
+                    carla.command.SetAutopilot(
+                        carla.command.FutureActor, True # type: ignore
+                    )   # type: ignore
                 )
             )
 
         for response in self.client.apply_batch_sync(batch, False):
-            self.vehicles_list.append(response.actor_id)
+            self.vehicle_ids.append(response.actor_id)
 
         for response in self.client.apply_batch_sync(batch):
             if response.error:
                 pass
             else:
-                self.vehicles_list.append(response.actor_id)
+                self.vehicle_ids.append(response.actor_id)
 
         traffic_manager.global_percentage_speed_difference(30.0)
 
-    def step(self, action=None, traffic_light_color=""):
-        rewards = []
+    def step(
+        self,
+        action: Optional[np.ndarray] = None,
+        traffic_light_color: Optional[str] = "",
+    ):
+        rewards: List[np.ndarray] = []
         next_obs, done, info = None, None, None
         for _ in range(self.frame_skip):  # default 1
             next_obs, reward, done, info = self._simulator_step(
@@ -364,7 +375,9 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
             raise ValueError("frame_skip >= 1")
         return next_obs, np.mean(rewards), done, info
 
-    def _is_vehicle_hazard(self, vehicle, vehicle_list):
+    def _is_vehicle_hazard(
+        self, vehicle: carla.Vehicle, targets: List[carla.Vehicle]
+    ):
         """
         :param vehicle_list: list of potential obstacle to check
         :return: a tuple given by (bool_flag, vehicle), where
@@ -376,7 +389,7 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
         ego_vehicle_location = vehicle.get_location()
         ego_vehicle_waypoint = self.map.get_waypoint(ego_vehicle_location)
 
-        for target_vehicle in vehicle_list:
+        for target_vehicle in targets:
             # do not account for the ego vehicle
             if target_vehicle.id == vehicle.id:
                 continue
@@ -400,7 +413,9 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
 
         return False, 0.0, None
 
-    def _is_object_hazard(self, vehicle, object_list):
+    def _is_object_hazard(
+        self, vehicle: carla.Vehicle, targets: List[carla.Vehicle]
+    ):
         """
         :param vehicle_list: list of potential obstacle to check
         :return: a tuple given by (bool_flag, vehicle), where
@@ -412,7 +427,7 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
         ego_vehicle_location = vehicle.get_location()
         ego_vehicle_waypoint = self.map.get_waypoint(ego_vehicle_location)
 
-        for target_vehicle in object_list:
+        for target_vehicle in targets:
             # do not account for the ego vehicle
             if target_vehicle.id == vehicle.id:
                 continue
@@ -437,13 +452,13 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
         return False, 0.0, None
 
     def _get_trafficlight_trigger_location(
-        self, traffic_light
+        self, traffic_light: carla.TrafficLight
     ):  # pylint: disable=no-self-use
         """
         Calculates the yaw of the waypoint that represents the trigger volume of the traffic light
         """
 
-        def rotate_point(point, radians):
+        def rotate_point(point: carla.Vector3D, radians: float):
             """
             rotate a given point by a given angle
             """
@@ -462,7 +477,7 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
 
         return carla.Location(point_location.x, point_location.y, point_location.z)
 
-    def _is_light_red(self, vehicle):
+    def _is_light_red(self, vehicle: carla.Actor):
         """
         Method to check if there is a red light affecting us. This version of
         the method is compatible with both European and US style traffic lights.
@@ -500,23 +515,19 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
 
         return False, 0.0, None
 
-    def _get_collision_reward(self, vehicle):
-        vehicle_hazard, reward, _ = self._is_vehicle_hazard(
-            vehicle, self.vehicle_list
-        )
+    def _get_collision_reward(self, vehicle: carla.Vehicle):
+        vehicle_hazard, reward, _ = self._is_vehicle_hazard(vehicle, self.vehicle_list)
         return vehicle_hazard, reward
 
-    def _get_traffic_light_reward(self, vehicle):
+    def _get_traffic_light_reward(self, vehicle: carla.Vehicle):
         traffic_light_hazard, _, _ = self._is_light_red(vehicle)
         return traffic_light_hazard, 0.0
 
-    def _get_object_collided_reward(self, vehicle):
-        object_hazard, reward, _ = self._is_object_hazard(
-            vehicle, self.object_list
-        )
+    def _get_object_collided_reward(self, vehicle: carla.Vehicle):
+        object_hazard, reward, _ = self._is_object_hazard(vehicle, self.object_list)
         return object_hazard, reward
 
-    def get_distance_vehicle_target(self, vehicle):
+    def get_distance_vehicle_target(self, vehicle: carla.Vehicle):
         vehicle_location = vehicle.get_location()
         target_location = self.target_location
         return np.linalg.norm(
@@ -529,7 +540,7 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
             )
         )
 
-    def goal_reaching_reward(self, vehicle):
+    def goal_reaching_reward(self, vehicle: carla.Vehicle):
         # Now we will write goal_reaching_rewards
         vehicle_location = vehicle.get_location()
         target_location = self.target_location
@@ -555,15 +566,12 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
         # base_reward = -1.0 * (dist / 100.0) + 5.0
         base_reward = vel_forward
         collided_done, collision_reward = self._get_collision_reward(vehicle)
-        (
-            traffic_light_done,
-            traffic_light_reward,
-        ) = self._get_traffic_light_reward(vehicle)
+        _, traffic_light_reward = self._get_traffic_light_reward(vehicle)
         (
             object_collided_done,
             object_collided_reward,
         ) = self._get_object_collided_reward(vehicle)
-        total_reward = (
+        total_reward: np.ndarray = (
             base_reward + 100 * collision_reward
         )  # + 100 * traffic_light_reward + 100.0 * object_collided_reward
 
@@ -584,16 +592,20 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
 
         return total_reward, reward_dict, done_dict
 
-    def _simulator_step(self, action, traffic_light_color=None):
+    def _simulator_step(
+        self,
+        action: Optional[np.ndarray],
+        traffic_light_color: Optional[str] = None,
+    ) -> Tuple[Dict[str, np.ndarray], np.ndarray, bool, Dict[str, Any]]:
         raise NotImplementedError
 
     def finish(self):
         print("destroying actors.")
         for actor in self.actor_list:
             actor.destroy()
-        print("\ndestroying %d vehicles" % len(self.vehicles_list))
+        print("\ndestroying %d vehicles" % len(self.vehicle_ids))
         self.client.apply_batch(
-            [carla.command.DestroyActor(x) for x in self.vehicles_list]
+            [carla.command.DestroyActor(x) for x in self.vehicle_ids]
         )
         time.sleep(0.5)
         pygame.quit()

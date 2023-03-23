@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Any
-import numpy as np
+from typing import Any, overload
 
 import carla
+import numpy as np
 
 class Response:
 	"""
@@ -37,12 +37,14 @@ class SpawnActor:
 	parent_id: int
 	"""Identificator of the parent actor."""
 
+	@overload
 	def __init__(self):
 		"""
 
 		"""
 		...
 
+	@overload
 	def __init__(self, blueprint: carla.ActorBlueprint, transform: carla.Transform):
 		"""
 
@@ -53,6 +55,7 @@ class SpawnActor:
 		"""
 		...
 
+	@overload
 	def __init__(self, blueprint: carla.ActorBlueprint, transform: carla.Transform, parent: str):
 		"""
 
@@ -83,7 +86,7 @@ class DestroyActor:
 	actor_id: int
 	"""Actor affected by the command"""
 
-	def __init__(self, actor: str):
+	def __init__(self, actor: carla.Actor | int):
 		"""
 
 

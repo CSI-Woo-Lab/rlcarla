@@ -1,5 +1,6 @@
 import datetime
 import os
+from typing import Any, Dict, Optional, Tuple, Union
 
 import carla
 import numpy as np
@@ -16,16 +17,17 @@ class DCCarlaEnv(BaseCarlaEnv):
             carla.Transform(carla.Location(x=1.6, z=1.7), carla.Rotation(yaw=0.0)),
             attach_to=self.vehicle,
         )
-        self.actor_list.append(self.lidar_sensor)
         if self.record_dir is None:
             self.record_dir = os.path.join(
                 "carla_data",
-                "-".join([
-                    "carla",
-                    self.map.name.lower().split("/")[-1],
-                    f"{self.vision_size}x{self.vision_size}",
-                    f"fov{self.vision_fov}",
-                ])
+                "-".join(
+                    [
+                        "carla",
+                        self.map.name.lower().split("/")[-1],
+                        f"{self.vision_size}x{self.vision_size}",
+                        f"fov{self.vision_fov}",
+                    ]
+                ),
             )
             if self.frame_skip > 1:
                 self.record_dir += f"-{self.frame_skip}"
@@ -55,13 +57,13 @@ class DCCarlaEnv(BaseCarlaEnv):
         self.observation_space.dtype = np.dtype(np.uint8)
 
         self.action_space.sample = lambda: np.random.uniform(
-            low=low, high=high, size=self.action_space.shape[0] # type: ignore
+            low=low, high=high, size=self.action_space.shape[0]  # type: ignore
         ).astype(np.float32)
 
         # roaming carla agent
         self.world.tick()
 
-    def goal_reaching_reward(self, vehicle):
+    def goal_reaching_reward(self, vehicle: carla.Vehicle):
         total_reward, reward_dict, done_dict = super().goal_reaching_reward(vehicle)
 
         dist = self.get_distance_vehicle_target(vehicle)
@@ -77,7 +79,11 @@ class DCCarlaEnv(BaseCarlaEnv):
 
         return total_reward, reward_dict, done_dict
 
-    def _simulator_step(self, action, traffic_light_color=None):
+    def _simulator_step(
+        self,
+        action: Optional[Union[np.ndarray, carla.VehicleControl]],
+        traffic_light_color: Optional[str] = None,
+    ) -> Tuple[Dict[str, np.ndarray], np.ndarray, bool, Dict[str, Any]]:
         if action is None:
             throttle, steer, brake = 0.0, 0.0, 0
         elif isinstance(action, np.ndarray):
@@ -183,9 +189,9 @@ class DCCarlaEnv(BaseCarlaEnv):
         }
 
         done = any(done_dict.values())
-        next_obs_sensor = np.hstack([
-            value for key, value in next_obs.items() if key != "image"
-        ])
+        next_obs_sensor = np.hstack(
+            [value for key, value in next_obs.items() if key != "image"]
+        )
 
         return (
             {"sensor": next_obs_sensor},

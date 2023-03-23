@@ -1,4 +1,5 @@
 import argparse
+import ast
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -15,7 +16,7 @@ class EnvArguments:
     lights: bool
     route: int
     mode: str
-    route_list: List[str]
+    route_list: List[List[int]]
     random_route: bool
 
     class_mode: str
@@ -52,7 +53,7 @@ def parse_args():
     parser.add_argument("--lights", default=False, action="store_true")
     parser.add_argument("--route", type=int, default=0)
     parser.add_argument("--mode", default="ours", type=str)
-    parser.add_argument("--route_list", default=[], type=list)
+    parser.add_argument("--route_list", default=[], type=ast.literal_eval)
 
     parser.add_argument("--random_route", action="store_true")
 

@@ -1,3 +1,5 @@
+from typing import Any, Dict, Optional
+
 import carla
 import gym
 import gym.spaces
@@ -12,6 +14,7 @@ class BCCarlaEnv(BaseCarlaEnv):
     def _init(self):
         # dummy variables, to match deep mind control's APIs
         self.action_space = gym.spaces.Box(shape=(2,), low=-1, high=1)
+        print(self.observation_space)
         self.observation_space = gym.spaces.Dict(
             {
                 "obs": gym.spaces.Box(shape=(105,), low=-1, high=1),
@@ -20,22 +23,24 @@ class BCCarlaEnv(BaseCarlaEnv):
             }
         )
         # roaming carla agent
-        self.timesteps = 0
         self.world.tick()
 
         self.collision_sensor = CollisionSensor(self.vehicle)
         self.lane_invasion_sensor = LaneInvasionSensor(self.vehicle, self)
-        self.actor_list.append(self.collision_sensor)
-        self.actor_list.append(self.lane_invasion_sensor)
 
-        self.lane_invasion = None
+        self.lane_invasion: Optional[Dict[carla.LaneMarkingType, Any]] = None
 
     def reset_init(self):
         super().reset_init()
-        self.lane_invasion_sensor.sensor.stop()
-        self.lane_invasion_sensor.sensor.destroy()
-        self.collision_sensor.sensor.stop()
-        self.collision_sensor.sensor.destroy()
+
+        if self.lane_invasion_sensor.sensor is not None:
+            self.lane_invasion_sensor.sensor.stop()
+            self.lane_invasion_sensor.sensor.destroy()
+
+        if self.collision_sensor.sensor is not None:
+            self.collision_sensor.sensor.stop()
+            self.collision_sensor.sensor.destroy()
+
         self.collision_sensor = CollisionSensor(self.vehicle)
         self.lane_invasion_sensor = LaneInvasionSensor(self.vehicle, self)
         self.lane_invasion = None
@@ -44,15 +49,15 @@ class BCCarlaEnv(BaseCarlaEnv):
         self.reset_init()
         return super().reset()
 
-    def goal_reaching_reward(self, vehicle):
+    def goal_reaching_reward(self, vehicle: carla.Vehicle):
         colhist = self.collision_sensor.get_collision_history()
         lane_invasion = self.lane_invasion
         if lane_invasion is None:
             lane_invasion = {}
         lane_done = (
             colhist
-            or carla.libcarla.LaneMarkingType.Solid in lane_invasion
-            or carla.libcarla.LaneMarkingType.SolidSolid in lane_invasion
+            or carla.LaneMarkingType.Solid in lane_invasion
+            or carla.LaneMarkingType.SolidSolid in lane_invasion
         )
 
         dist = self.get_distance_vehicle_target(vehicle)
@@ -66,7 +71,11 @@ class BCCarlaEnv(BaseCarlaEnv):
         }
         return total_reward, reward_dict, done_dict
 
-    def _simulator_step(self, action, traffic_light_color=None):
+    def _simulator_step(
+            self,
+            action: Optional[np.ndarray],
+            traffic_light_color: Optional[str] = None,
+        ):
         expert_action = self.compute_action()[0]
 
         if action is None:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Iterator
 import numpy as np
 
 from . import command
@@ -296,7 +296,7 @@ class Vehicle(Actor):
 	bounding_box: BoundingBox
 	"""Bounding box containing the geometry of the vehicle. Its location and rotation are relative to the vehicle it is attached to."""
 
-	def apply_control(self, control: VehicleControl):
+	def apply_control(self, control: VehicleControl) -> None:
 		"""
 		Applies a control object on the next tick, containing driving parameters such as throttle, steering or gear shifting.
 
@@ -304,7 +304,7 @@ class Vehicle(Actor):
 		"""
 		...
 
-	def apply_physics_control(self, physics_control: VehiclePhysicsControl):
+	def apply_physics_control(self, physics_control: VehiclePhysicsControl) -> None:
 		"""
 		Applies a physics control object in the next tick containing the parameters that define the vehicle as a corporeal body. E.g.: moment of inertia, mass, drag coefficient and many more.
 
@@ -1192,7 +1192,7 @@ class BlueprintLibrary:
 		"""
 		...
 
-	def __iter__(self):
+	def __iter__(self) -> Iterator[ActorBlueprint]:
 		"""
 		Iterate over the carla.ActorBlueprint stored in the library.
 		"""
@@ -5910,7 +5910,7 @@ class World:
 		"""
 		...
 
-	def set_weather(self, weather: WeatherParameters):
+	def set_weather(self, weather: WeatherParameters) -> None:
 		"""
 		Changes the weather parameteres ruling the simulation to another ones defined in an object.
 
