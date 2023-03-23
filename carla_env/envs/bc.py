@@ -4,7 +4,6 @@ import gym.spaces
 import numpy as np
 
 from carla_env.envs.base import BaseCarlaEnv
-from utils.cart import cart2pol
 from utils.lidar import generate_lidar_bin
 from utils.sensors import CollisionSensor, LaneInvasionSensor
 
