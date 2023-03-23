@@ -72,10 +72,10 @@ class BCCarlaEnv(BaseCarlaEnv):
         return total_reward, reward_dict, done_dict
 
     def _simulator_step(
-            self,
-            action: Optional[np.ndarray],
-            traffic_light_color: Optional[str] = None,
-        ):
+        self,
+        action: Optional[np.ndarray],
+        traffic_light_color: Optional[str] = None,
+    ):
         expert_action = self.compute_action()[0]
 
         if action is None:

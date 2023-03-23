@@ -55,10 +55,12 @@ def behavior_cloning(args: EnvArguments):
     if datasets is not None and model.replay_buffer is not None:
         for dataset in tqdm.tqdm(datasets):
             for i in range(dataset["observations"]["sensor"].shape[0] - 1):
-                action = np.array([
-                    dataset["actions"][i][0] - dataset["actions"][i][2],
-                    dataset["actions"][i][1],
-                ])
+                action = np.array(
+                    [
+                        dataset["actions"][i][0] - dataset["actions"][i][2],
+                        dataset["actions"][i][1],
+                    ]
+                )
                 info = {
                     **dataset["infos"][i],
                     "expert_action": action,

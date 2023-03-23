@@ -12,7 +12,6 @@ import gym
 import gym.spaces
 import numpy as np
 import pygame
-from dotmap import DotMap
 from typing_extensions import TypedDict
 
 from agents.navigation.global_route_planner_dao import GlobalRoutePlannerDAO
@@ -30,7 +29,7 @@ class CarlaObservation(TypedDict):
     module_select: np.ndarray
 
 
-class BaseCarlaEnv(abc.ABC, gym.Env[Dict[str, gym.spaces.Space], np.ndarray]):
+class BaseCarlaEnv(abc.ABC, gym.Env):
     OBS_IDX = {
         "control": np.array([0, 1, 2]),
         "acceleration": np.array([3, 4, 5]),
@@ -139,12 +138,11 @@ class BaseCarlaEnv(abc.ABC, gym.Env[Dict[str, gym.spaces.Space], np.ndarray]):
         for idx, actor in enumerate(self.actor_list):
             print(idx, actor)
 
-        self.vehicle_list: List[carla.Vehicle] \
-            = self.actor_list.filter("*vehicle*")
-        self.lights_list: List[carla.TrafficLight] \
-            = self.actor_list.filter("*traffic_light*")
-        self.object_list: List[carla.Vehicle] \
-            = self.actor_list.filter("*traffic.*")
+        self.vehicle_list: List[carla.Vehicle] = self.actor_list.filter("*vehicle*")
+        self.lights_list: List[carla.TrafficLight] = self.actor_list.filter(
+            "*traffic_light*"
+        )
+        self.object_list: List[carla.Vehicle] = self.actor_list.filter("*traffic.*")
 
         ## Initialize the route planner
         self.route_planner.setup()
@@ -201,7 +199,9 @@ class BaseCarlaEnv(abc.ABC, gym.Env[Dict[str, gym.spaces.Space], np.ndarray]):
     def seed(self, seed: int):
         return seed
 
-    def compute_action(self) -> Tuple[
+    def compute_action(
+        self,
+    ) -> Tuple[
         carla.VehicleControl,
         Union[Tuple[Literal[True], carla.Actor], Tuple[Literal[False], None]],
     ]:
@@ -219,7 +219,7 @@ class BaseCarlaEnv(abc.ABC, gym.Env[Dict[str, gym.spaces.Space], np.ndarray]):
         else:
             init_transforms = self.world.get_map().get_spawn_points()
 
-            if len(self.route_list) == 0:
+            if not self.route_list:
                 route_candidate = [
                     [1, 37],
                     [0, 87],
@@ -265,9 +265,7 @@ class BaseCarlaEnv(abc.ABC, gym.Env[Dict[str, gym.spaces.Space], np.ndarray]):
         if not hasattr(self, "vehicle"):  # then create the ego vehicle
             blueprint_library = self.world.get_blueprint_library()
             vehicle_blueprint = blueprint_library.find("vehicle.audi.a2")
-            vehicle = self.world.spawn_actor(
-                vehicle_blueprint, vehicle_init_transform
-            )
+            vehicle = self.world.spawn_actor(vehicle_blueprint, vehicle_init_transform)
             if not isinstance(vehicle, carla.Vehicle):
                 raise ValueError
             self.vehicle = vehicle
@@ -307,7 +305,7 @@ class BaseCarlaEnv(abc.ABC, gym.Env[Dict[str, gym.spaces.Space], np.ndarray]):
                 self.map.get_waypoint_xodr(
                     road_id,
                     random.choice([-1, -2, -3, -4]),
-                    np.random.uniform(road_length)
+                    np.random.uniform(road_length),
                 ).transform
                 for _ in range(num_vehicles)
             ]
@@ -339,8 +337,8 @@ class BaseCarlaEnv(abc.ABC, gym.Env[Dict[str, gym.spaces.Space], np.ndarray]):
             batch.append(
                 carla.command.SpawnActor(blueprint, transform).then(
                     carla.command.SetAutopilot(
-                        carla.command.FutureActor, True # type: ignore
-                    )   # type: ignore
+                        carla.command.FutureActor, True  # type: ignore
+                    )  # type: ignore
                 )
             )
 
@@ -359,7 +357,7 @@ class BaseCarlaEnv(abc.ABC, gym.Env[Dict[str, gym.spaces.Space], np.ndarray]):
         self,
         action: Optional[np.ndarray] = None,
         traffic_light_color: Optional[str] = "",
-    ):
+    ) -> Tuple[CarlaObservation, np.ndarray, bool, Dict[str, Any]]:
         rewards: List[np.ndarray] = []
         next_obs, done, info = None, None, None
         for _ in range(self.frame_skip):  # default 1
@@ -375,15 +373,12 @@ class BaseCarlaEnv(abc.ABC, gym.Env[Dict[str, gym.spaces.Space], np.ndarray]):
             raise ValueError("frame_skip >= 1")
         return next_obs, np.mean(rewards), done, info
 
-    def _is_vehicle_hazard(
-        self, vehicle: carla.Vehicle, targets: List[carla.Vehicle]
-    ):
+    def _is_vehicle_hazard(self, vehicle: carla.Vehicle, targets: List[carla.Vehicle]):
         """
         :param vehicle_list: list of potential obstacle to check
         :return: a tuple given by (bool_flag, vehicle), where
-                 - bool_flag is True if there is a vehicle ahead blocking us
-                   and False otherwise
-                 - vehicle is the blocker object itself
+            - bool_flag is True if there is a vehicle ahead blocking us and False otherwise
+            - vehicle is the blocker object itself
         """
 
         ego_vehicle_location = vehicle.get_location()
@@ -395,9 +390,7 @@ class BaseCarlaEnv(abc.ABC, gym.Env[Dict[str, gym.spaces.Space], np.ndarray]):
                 continue
 
             # if the object is not in our lane it's not an obstacle
-            target_vehicle_waypoint = self.map.get_waypoint(
-                target_vehicle.get_location()
-            )
+            target_vehicle_waypoint = self.map.get_waypoint(target_vehicle.get_location())
             if (
                 target_vehicle_waypoint.road_id != ego_vehicle_waypoint.road_id
                 or target_vehicle_waypoint.lane_id != ego_vehicle_waypoint.lane_id
@@ -413,9 +406,7 @@ class BaseCarlaEnv(abc.ABC, gym.Env[Dict[str, gym.spaces.Space], np.ndarray]):
 
         return False, 0.0, None
 
-    def _is_object_hazard(
-        self, vehicle: carla.Vehicle, targets: List[carla.Vehicle]
-    ):
+    def _is_object_hazard(self, vehicle: carla.Vehicle, targets: List[carla.Vehicle]):
         """
         :param vehicle_list: list of potential obstacle to check
         :return: a tuple given by (bool_flag, vehicle), where
@@ -596,7 +587,7 @@ class BaseCarlaEnv(abc.ABC, gym.Env[Dict[str, gym.spaces.Space], np.ndarray]):
         self,
         action: Optional[np.ndarray],
         traffic_light_color: Optional[str] = None,
-    ) -> Tuple[Dict[str, np.ndarray], np.ndarray, bool, Dict[str, Any]]:
+    ) -> Tuple[CarlaObservation, np.ndarray, bool, Dict[str, Any]]:
         raise NotImplementedError
 
     def finish(self):
