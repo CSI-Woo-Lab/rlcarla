@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 import numpy as np
 
-import command
+from . import command
 
 class Actor:
 	"""
@@ -802,14 +802,6 @@ class VehicleDoor:
 	"""Represents all doors."""
 
 
-
-from __future__ import annotations
-
-from typing import Any
-import numpy as np
-
-import command
-
 class ActorAttributeType:
 	"""
 	CARLA provides a library of blueprints for actors in carla.BlueprintLibrary with different attributes each. This class defines the types those at carla.ActorAttribute can be as a series of enum. All this information is managed internally and listed here for a better comprehension of how CARLA works.
@@ -1222,14 +1214,6 @@ class BlueprintLibrary:
 		"""
 		...
 
-
-
-from __future__ import annotations
-
-from typing import Any
-import numpy as np
-
-import command
 
 class Client:
 	"""
@@ -1728,14 +1712,6 @@ class OpendriveGenerationParameters:
 	"""If __True__, Pedestrian navigation will be enabled using Recast tool. For very large maps it is recomended to disable this option. __Default is `True`__."""
 
 
-
-from __future__ import annotations
-
-from typing import Any
-import numpy as np
-
-import command
-
 class VehicleControl:
 	"""
 	Manages the basic movement of a vehicle using typical driving controls.
@@ -2151,14 +2127,6 @@ class WheelPhysicsControl:
 		"""
 		...
 
-
-
-from __future__ import annotations
-
-from typing import Any
-import numpy as np
-
-import command
 
 class Vector2D:
 	"""
@@ -2845,14 +2813,6 @@ class GeoLocation:
 		...
 
 
-
-from __future__ import annotations
-
-from typing import Any
-import numpy as np
-
-import command
-
 class LightGroup:
 	"""
 	This class categorizes the lights on scene into different groups. These groups available are provided as a enum values that can be used as flags.  
@@ -3176,14 +3136,6 @@ __Note.__ So far, though there is a `vehicle` group, vehicle lights are not avai
 		"""
 		...
 
-
-
-from __future__ import annotations
-
-from typing import Any
-import numpy as np
-
-import command
 
 class LaneType:
 	"""
@@ -3897,14 +3849,6 @@ Example: In a road with 5 lanes, being 3 not affected: [(from_lane1,to_lane2),(f
 		...
 
 
-
-from __future__ import annotations
-
-from typing import Any
-import numpy as np
-
-import command
-
 class Osm2Odr:
 	"""
 	Class that converts an OpenStreetMap map to OpenDRIVE format, so that it can be loaded in CARLA. Find out more about this feature in the [docs](tuto_G_openstreetmap.md).
@@ -3972,14 +3916,6 @@ class Osm2OdrSettings:
 		"""
 		...
 
-
-
-from __future__ import annotations
-
-from typing import Any
-import numpy as np
-
-import command
 
 class Sensor(Actor):
 	"""
@@ -4171,14 +4107,6 @@ class RssLogLevel:
 	off: Any
 	""""""
 
-
-
-from __future__ import annotations
-
-from typing import Any
-import numpy as np
-
-import command
 
 class SensorData:
 	"""
@@ -5060,14 +4988,6 @@ class DVSEventArray:
 		...
 
 
-
-from __future__ import annotations
-
-from typing import Any
-import numpy as np
-
-import command
-
 class WorldSnapshot:
 	"""
 	This snapshot comprises all the information for every actor on scene at a certain moment of time. It creates and gives acces to a data structure containing a series of carla.ActorSnapshot. The client recieves a new snapshot on every tick that cannot be stored.
@@ -5179,14 +5099,6 @@ class ActorSnapshot:
 		...
 
 
-
-from __future__ import annotations
-
-from typing import Any
-import numpy as np
-
-import command
-
 class WeatherParameters:
 	"""
 	This class defines objects containing lighting and weather specifications that can later be applied in carla.World. So far, these conditions only intervene with [sensor.camera.rgb](ref_sensors.md#rgb-camera). They neither affect the actor's physics nor other sensors.        
@@ -5292,14 +5204,6 @@ class WeatherParameters:
 		"""
 		...
 
-
-
-from __future__ import annotations
-
-from typing import Any
-import numpy as np
-
-import command
 
 class Timestamp:
 	"""
