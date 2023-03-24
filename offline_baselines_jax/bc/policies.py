@@ -1,30 +1,25 @@
-from typing import Any, Dict, List, Optional, Tuple, Type, Union, Callable
-
-import gym
-import jax
 import functools
-import optax
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import flax.linen as nn
+import gym
+import jax
 import jax.numpy as jnp
 import numpy as np
+import optax
 
+from offline_baselines_jax.common.jax_layers import (BaseFeaturesExtractor,
+                                                     CombinedExtractor,
+                                                     FlattenExtractor,
+                                                     NatureCNN, create_mlp,
+                                                     default_init,
+                                                     get_actor_critic_arch)
 from offline_baselines_jax.common.policies import Model
 from offline_baselines_jax.common.preprocessing import get_action_dim
-from offline_baselines_jax.common.jax_layers import (
-    BaseFeaturesExtractor,
-    CombinedExtractor,
-    FlattenExtractor,
-    NatureCNN,
-    create_mlp,
-    get_actor_critic_arch,
-    default_init,
-)
-from offline_baselines_jax.common.type_aliases import Schedule, Params
+from offline_baselines_jax.common.type_aliases import Params, Schedule
 
 
-@functools.partial(jax.jit, static_argnames=('actor_apply_fn'))
-def sample_actions(actor_apply_fn: Callable[..., Any], actor_params: Params, observations: np.ndarray,) -> jnp.ndarray:
+def sample_actions(actor_apply_fn: Callable[..., Any], actor_params: Params, observations: jnp.ndarray,) -> jnp.ndarray:
     action = actor_apply_fn({'params': actor_params}, observations)
     return action
 
@@ -127,10 +122,12 @@ class BCPolicy(object):
         actor = Model.create(actor_def, inputs=[actor_key, observation], tx=optax.adam(learning_rate=lr_schedule))
         self.actor = actor
 
+        self.sample_actions = jax.jit(functools.partial(sample_actions, actor_apply_fn=self.actor.apply_fn))
+
     def _predict(self, observation: jnp.ndarray, deterministic: bool = False) -> jnp.ndarray:
         # Note: the deterministic deterministic parameter is ignored in the case of TD3.
         #   Predictions are always deterministic.
-        return np.asarray(sample_actions(self.actor.apply_fn, self.actor.params, observation))
+        return np.asarray(self.sample_actions(actor_params=self.actor.params, observations=observation))
 
     def predict(self, observation: jnp.ndarray, deterministic: bool = False) -> np.ndarray:
         actions = self._predict(observation)
