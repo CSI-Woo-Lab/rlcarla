@@ -1,6 +1,6 @@
 import datetime
 import os
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union, cast
 
 import carla
 import numpy as np
@@ -48,12 +48,11 @@ class DCCarlaEnv(BaseCarlaEnv):
         low = -1.0
         high = 1.0
 
-        self.action_space = DotMap()
+        self.action_space = DotMap()    # type: ignore
         self.action_space.low.min = lambda: low
         self.action_space.high.max = lambda: high
         self.action_space.shape = (2,)
-        self.observation_space = DotMap()
-        # self.observation_space.shape = (3, self.vision_size, self.vision_size)
+        self.observation_space = DotMap()   # type: ignore
         self.observation_space.dtype = np.dtype(np.uint8)
 
         self.action_space.sample = lambda: np.random.uniform(
@@ -79,9 +78,16 @@ class DCCarlaEnv(BaseCarlaEnv):
 
         return total_reward, reward_dict, done_dict
 
+    def step(
+        self,
+        action: Optional[carla.VehicleControl] = None,
+        traffic_light_color: Optional[str] = None,
+    ) -> Tuple[Dict[str, np.ndarray], np.ndarray, bool, Dict[str, Any]]:
+        return super().step(cast(np.ndarray, action), traffic_light_color)
+
     def _simulator_step(
         self,
-        action: Optional[Union[np.ndarray, carla.VehicleControl]],
+        action: Optional[Union[np.ndarray, carla.VehicleControl]] = None,
         traffic_light_color: Optional[str] = None,
     ) -> Tuple[Dict[str, np.ndarray], np.ndarray, bool, Dict[str, Any]]:
         if action is None:

@@ -5,14 +5,14 @@ import os
 import pickle as pkl
 import random
 import time
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import carla
 import gym
 import gym.spaces
 import numpy as np
 import pygame
-from typing_extensions import TypedDict
+from typing_extensions import Literal
 
 from agents.navigation.global_route_planner_dao import GlobalRoutePlannerDAO
 from agents.tools.misc import is_within_distance_ahead
@@ -23,13 +23,7 @@ from utils.roaming_agent import RoamingAgent
 from utils.route_planner import CustomGlobalRoutePlanner
 
 
-class CarlaObservation(TypedDict):
-    obs: np.ndarray
-    task: np.ndarray
-    module_select: np.ndarray
-
-
-class BaseCarlaEnv(abc.ABC, gym.Env):
+class BaseCarlaEnv(abc.ABC, gym.Env[dict, np.ndarray]):
     OBS_IDX = {
         "control": np.array([0, 1, 2]),
         "acceleration": np.array([3, 4, 5]),
@@ -162,7 +156,7 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
             "rotation_frequency",
             "range",
             "dropoff_general_rate",
-            "dropoff_intersity_limit",
+            "dropoff_intensity_limit",
             "dropoff_zero_intensity",
             "points_per_second",
         ]
@@ -357,7 +351,7 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
         self,
         action: Optional[np.ndarray] = None,
         traffic_light_color: Optional[str] = "",
-    ) -> Tuple[CarlaObservation, np.ndarray, bool, Dict[str, Any]]:
+    ) -> Tuple[Dict[str, Any], np.ndarray, bool, Dict[str, Any]]:
         rewards: List[np.ndarray] = []
         next_obs, done, info = None, None, None
         for _ in range(self.frame_skip):  # default 1
@@ -585,9 +579,9 @@ class BaseCarlaEnv(abc.ABC, gym.Env):
 
     def _simulator_step(
         self,
-        action: Optional[np.ndarray],
+        action: Optional[np.ndarray] = None,
         traffic_light_color: Optional[str] = None,
-    ) -> Tuple[CarlaObservation, np.ndarray, bool, Dict[str, Any]]:
+    ) -> Tuple[Dict[str, Any], np.ndarray, bool, Dict[str, Any]]:
         raise NotImplementedError
 
     def finish(self):

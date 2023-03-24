@@ -73,7 +73,7 @@ class BCCarlaEnv(BaseCarlaEnv):
 
     def _simulator_step(
         self,
-        action: Optional[np.ndarray],
+        action: Optional[np.ndarray] = None,
         traffic_light_color: Optional[str] = None,
     ):
         expert_action = self.compute_action()[0]
