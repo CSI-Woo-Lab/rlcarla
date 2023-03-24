@@ -29,7 +29,7 @@ class EnvArguments:
     lower_fov: float
     rotation_frequency: float
     max_range: float
-    num_theta_bin: float
+    num_theta_bin: int
     dropoff_general_rate: float
     dropoff_intensity_limit: float
     dropoff_zero_intensity: float

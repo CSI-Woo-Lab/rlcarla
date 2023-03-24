@@ -152,7 +152,6 @@ class DCCarlaEnv(BaseCarlaEnv):
             "lidar": np.array(lidar_bin),
             "control": np.array([throttle, steer, brake]),
             "acceleration": np.array([acceleration.x, acceleration.y, acceleration.z]),
-            "veolcity": np.array([velocity.x, velocity.y, velocity.z]),
             "angular_veolcity": np.array(
                 [angular_velocity.x, angular_velocity.y, angular_velocity.z]
             ),
@@ -161,6 +160,7 @@ class DCCarlaEnv(BaseCarlaEnv):
             "forward_vector": np.array(
                 [forward_vector.x, forward_vector.y, forward_vector.z]
             ),
+            "veolcity": np.array([velocity.x, velocity.y, velocity.z]),
             "target_location": np.array(
                 [
                     self.target_location.x,

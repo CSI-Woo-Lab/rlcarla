@@ -14,10 +14,9 @@ class BCCarlaEnv(BaseCarlaEnv):
     def _init(self):
         # dummy variables, to match deep mind control's APIs
         self.action_space = gym.spaces.Box(shape=(2,), low=-1, high=1)
-        print(self.observation_space)
         self.observation_space = gym.spaces.Dict(
             {
-                "obs": gym.spaces.Box(shape=(105,), low=-1, high=1),
+                "obs": gym.spaces.Box(shape=(24 + self.num_theta_bin,), low=-1, high=1),
                 "task": gym.spaces.Box(shape=(12,), low=0, high=1),
                 "module_select": gym.spaces.Box(shape=(36,), low=0, high=1),
             }
@@ -118,7 +117,6 @@ class BCCarlaEnv(BaseCarlaEnv):
             "lidar": np.array(lidar_bin),
             "control": np.array([throttle, steer, brake]),
             "acceleration": np.array([acceleration.x, acceleration.y, acceleration.z]),
-            "veolcity": np.array([velocity.x, velocity.y, velocity.z]),
             "angular_veolcity": np.array(
                 [angular_velocity.x, angular_velocity.y, angular_velocity.z]
             ),
@@ -127,6 +125,7 @@ class BCCarlaEnv(BaseCarlaEnv):
             "forward_vector": np.array(
                 [forward_vector.x, forward_vector.y, forward_vector.z]
             ),
+            "veolcity": np.array([velocity.x, velocity.y, velocity.z]),
             "target_location": np.array(
                 [
                     self.target_location.x,
