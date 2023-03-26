@@ -1,33 +1,29 @@
+import carla
 import numpy as np
 
 from agents.navigation.global_route_planner import GlobalRoutePlanner
 
 
 class CustomGlobalRoutePlanner(GlobalRoutePlanner):
-    def __init__(self, dao):
-        super(CustomGlobalRoutePlanner, self).__init__(dao=dao)
+    def compute_direction_velocities(
+        self,
+        origin: carla.Location,
+        velocity: carla.Vector3D,
+        destination: carla.Location,
+    ):
+        if self._graph is None:
+            raise RuntimeError("Graph is not initialized yet.")
 
-    """
-    def compute_distance(self, origin, destination):
-        node_list = super(CustomGlobalRoutePlanner, self)._path_search(origin=origin, destination=destination)
-        distance = 0.0
-        for idx in range(len(node_list) - 1):
-            distance += (super(CustomGlobalRoutePlanner, self)._distance_heuristic(node_list[idx], node_list[idx+1]))
-        # print ('Distance: ', distance)
-        return distance
-    """
-
-    def compute_direction_velocities(self, origin, velocity, destination):
-        node_list = super(CustomGlobalRoutePlanner, self)._path_search(
+        node_list = super()._path_search(
             origin=origin, destination=destination
         )
 
         origin_xy = np.array([origin.x, origin.y])
         velocity_xy = np.array([velocity.x, velocity.y])
 
-        first_node_xy = self._graph.nodes[node_list[1]]["vertex"]
-        first_node_xy = np.array([first_node_xy[0], first_node_xy[1]])
-        target_direction_vector = first_node_xy - origin_xy
+        first_node_xy = np.array(self._graph.nodes[node_list[1]]["vertex"][:2])
+
+        target_direction_vector = np.subtract(first_node_xy, origin_xy)
         target_unit_vector = np.array(target_direction_vector) / np.linalg.norm(
             target_direction_vector
         )
@@ -40,27 +36,21 @@ class CustomGlobalRoutePlanner(GlobalRoutePlanner):
         return vel_s, vel_perp
 
     def compute_distance(self, origin, destination):
-        node_list = super(CustomGlobalRoutePlanner, self)._path_search(
-            origin=origin, destination=destination
-        )
-        # print('Node list:', node_list)
+        if self._graph is None:
+            raise RuntimeError("Graph is not initialized yet.")
+
+        node_list = super()._path_search(origin, destination)
         first_node_xy = self._graph.nodes[node_list[0]]["vertex"]
-        # print('Diff:', origin, first_node_xy)
 
-        # distance = 0.0
-        distances = []
-        distances.append(
+        distances = [
+            super()._distance_heuristic(prev_node, next_node)
+            for prev_node, next_node in zip(node_list[:-1], node_list[1:])
+        ]
+        distances = [
             np.linalg.norm(
-                np.array([origin.x, origin.y, 0.0]) - np.array(first_node_xy)
-            )
-        )
-
-        for idx in range(len(node_list) - 1):
-            distances.append(
-                super(CustomGlobalRoutePlanner, self)._distance_heuristic(
-                    node_list[idx], node_list[idx + 1]
+                np.subtract(
+                    np.array([origin.x, origin.y, 0.0]), np.array(first_node_xy)
                 )
             )
-        # print('Distances:', distances)
-        # import pdb; pdb.set_trace()
+        ] + distances
         return np.sum(distances)

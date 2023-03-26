@@ -17,11 +17,11 @@ class CarlaSyncMode(object):
 
     """
 
-    def __init__(self, world, *sensors, **kwargs):
+    def __init__(self, world: carla.World, *sensors: carla.Actor, **kwargs):
         self.world = world
         self.sensors = sensors
         self.frame = None
-        self.delta_seconds = 1.0 / kwargs.get("fps", 20)
+        self.delta_seconds: float = 1.0 / kwargs.get("fps", 20)
         self._queues = []
         self._settings = None
 
@@ -46,7 +46,7 @@ class CarlaSyncMode(object):
         for sensor in self.sensors:
             make_queue(sensor.listen)
 
-    def tick(self, timeout):
+    def tick(self, timeout: float):
         self.frame = self.world.tick()
         data = [self._retrieve_data(q, timeout) for q in self._queues]
         assert all(x.frame == self.frame for x in data)

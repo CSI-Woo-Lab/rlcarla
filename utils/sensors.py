@@ -1,8 +1,11 @@
 import collections
 import math
 import weakref
+from typing import Optional
 
 import carla
+
+from carla_env.envs.base import BaseCarlaEnv
 
 # ==============================================================================
 # -- CollisionSensor -----------------------------------------------------------
@@ -10,7 +13,7 @@ import carla
 
 
 class CollisionSensor(object):
-    def __init__(self, parent_actor):
+    def __init__(self, parent_actor: carla.Vehicle):
         self.sensor = None
         self.history = []
         self._parent = parent_actor
@@ -48,16 +51,21 @@ class CollisionSensor(object):
 
 
 class LaneInvasionSensor(object):
-    def __init__(self, parent_actor, world, agent=None):
+    def __init__(
+        self,
+        parent_actor: carla.Vehicle,
+        world: BaseCarlaEnv,
+        agent: Optional[carla.Actor] = None,
+    ):
         self.sensor = None
         self.world = world
         self.agent = agent
         # If the spawn object is not a vehicle, we cannot use the Lane Invasion Sensor
         if parent_actor.type_id.startswith("vehicle."):
             self._parent = parent_actor
-            world = self._parent.get_world()
-            bp = world.get_blueprint_library().find("sensor.other.lane_invasion")
-            self.sensor = world.spawn_actor(
+            parent_world = self._parent.get_world()
+            bp = parent_world.get_blueprint_library().find("sensor.other.lane_invasion")
+            self.sensor = parent_world.spawn_actor(
                 bp, carla.Transform(), attach_to=self._parent
             )
             # We need to pass the lambda a weak reference to self to avoid circular
