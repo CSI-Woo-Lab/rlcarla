@@ -8,6 +8,7 @@ from dotmap import DotMap
 
 from carla_env.envs.base import BaseCarlaEnv
 from utils.lidar import generate_lidar_bin
+from utils.vector import rotation_to_array, vector_to_array
 
 
 class DCCarlaEnv(BaseCarlaEnv):
@@ -141,33 +142,17 @@ class DCCarlaEnv(BaseCarlaEnv):
 
         self.count += 1
 
-        acceleration = self.vehicle.get_acceleration()
-        velocity = self.vehicle.get_velocity()
-        angular_velocity = self.vehicle.get_angular_velocity()
-        location = self.vehicle.get_location()
         rotation = self.vehicle.get_transform().rotation
-        forward_vector = rotation.get_forward_vector()
-
         next_obs = {
             "lidar": np.array(lidar_bin),
             "control": np.array([throttle, steer, brake]),
-            "acceleration": np.array([acceleration.x, acceleration.y, acceleration.z]),
-            "angular_veolcity": np.array(
-                [angular_velocity.x, angular_velocity.y, angular_velocity.z]
-            ),
-            "location": np.array([location.x, location.y, location.z]),
-            "rotation": np.array([rotation.pitch, rotation.yaw, rotation.roll]),
-            "forward_vector": np.array(
-                [forward_vector.x, forward_vector.y, forward_vector.z]
-            ),
-            "veolcity": np.array([velocity.x, velocity.y, velocity.z]),
-            "target_location": np.array(
-                [
-                    self.target_location.x,
-                    self.target_location.y,
-                    self.target_location.z,
-                ]
-            ),
+            "acceleration": vector_to_array(self.vehicle.get_acceleration()),
+            "angular_veolcity": vector_to_array(self.vehicle.get_angular_velocity()),
+            "location": vector_to_array(self.vehicle.get_location()),
+            "rotation": rotation_to_array(rotation),
+            "forward_vector": vector_to_array(rotation.get_forward_vector()),
+            "veolcity": vector_to_array(self.vehicle.get_velocity()),
+            "target_location": vector_to_array(self.target_location),
         }
         # # To inspect images, run:
         # import pdb; pdb.set_trace()
