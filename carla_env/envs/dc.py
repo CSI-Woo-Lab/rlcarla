@@ -1,6 +1,7 @@
 import datetime
 import os
-from typing import Any, Dict, Optional, Tuple, Union, cast
+from pathlib import Path
+from typing import Any, Dict, Optional, Tuple, cast
 
 import carla
 import numpy as np
@@ -19,31 +20,10 @@ class DCCarlaEnv(BaseCarlaEnv):
             attach_to=self.vehicle,
         )
         if self.record_dir is None:
-            self.record_dir = os.path.join(
-                "carla_data",
-                "-".join(
-                    [
-                        "carla",
-                        self.map.name.lower().split("/")[-1],
-                        f"{self.vision_size}x{self.vision_size}",
-                        f"fov{self.vision_fov}",
-                    ]
-                ),
-            )
-            if self.frame_skip > 1:
-                self.record_dir += f"-{self.frame_skip}"
-            if self.multiagent:
-                self.record_dir += "-mutiagent"
-            if self.follow_traffic_lights:
-                self.record_dir += "-lights"
-            self.record_dir += f"-{self.max_episode_steps // 1000}k"
+            self.record_dir = self.__create_record_dirpath()
 
-            now = datetime.datetime.now()
-            self.record_dir += now.strftime("-%Y-%m-%d-%H-%M-%S")
-        if not os.path.exists(self.record_dir):
-            os.mkdir(self.record_dir)
-        if not os.path.exists(os.path.join(self.record_dir, "record")):
-            os.mkdir(os.path.join(self.record_dir, "record"))
+        record_path = Path(self.record_dir) / "record"
+        record_path.mkdir(parents=True, exist_ok=True)
 
         # dummy variables, to match deep mind control's APIs
         low = -1.0
@@ -62,6 +42,25 @@ class DCCarlaEnv(BaseCarlaEnv):
 
         # roaming carla agent
         self.world.tick()
+
+    def __create_record_dirpath(self):
+        now = datetime.datetime.now()
+
+        # Example: carla_data/carla-town01-224x224-fov90-1k-2020-05-20-15-00-00
+        return os.path.join(
+            "carla_data",
+            "-".join([
+                "carla",
+                self.map.name.lower().split("/")[-1],
+                f"{self.vision_size}x{self.vision_size}",
+                f"fov{self.vision_fov}",
+                f"{self.frame_skip}" if self.frame_skip > 1 else "",
+                "multiagent" if self.multiagent else "",
+                "lights" if self.follow_traffic_lights else "",
+                f"{self.max_episode_steps // 1000}k",
+                now.strftime("%Y-%m-%d-%H-%M-%S"),
+            ]),
+        )
 
     def goal_reaching_reward(self, vehicle: carla.Vehicle):
         total_reward, reward_dict, done_dict = super().goal_reaching_reward(vehicle)
@@ -88,38 +87,13 @@ class DCCarlaEnv(BaseCarlaEnv):
 
     def _simulator_step(
         self,
-        action: Optional[Union[np.ndarray, carla.VehicleControl]] = None,
+        action: Optional[carla.VehicleControl] = None,
         traffic_light_color: Optional[str] = None,
     ) -> Tuple[Dict[str, np.ndarray], np.ndarray, bool, Dict[str, Any]]:
         if action is None:
             throttle, steer, brake = 0.0, 0.0, 0
-        elif isinstance(action, np.ndarray):
-            control = carla.VehicleControl(0.0, 0.0, 0.0)
-            throttle, steer, brake = (
-                control.throttle,
-                control.steer,
-                control.brake,
-            )
-            vehicle_control = carla.VehicleControl(
-                throttle=throttle,  # [0,1]
-                steer=steer,  # [-1,1]
-                brake=brake,  # [0,1]
-                hand_brake=False,
-                reverse=False,
-                manual_gear_shift=False,
-            )
-            print(
-                vehicle_control.throttle,
-                vehicle_control.steer,
-                vehicle_control.brake,
-            )
-            self.vehicle.apply_control(vehicle_control)
-
         else:
             throttle, steer, brake = action.throttle, action.steer, action.brake
-            # throttle = clamp(throttle, minimum=0.005, maximum=0.995) + np.random.uniform(low=-0.003, high=0.003)
-            # steer = clamp(steer, minimum=-0.995, maximum=0.995) + np.random.uniform(low=-0.003, high=0.003)
-            # brake = clamp(brake, minimum=0.000, maximum=0.995) + np.random.uniform(low=-0.005, high=0.005)
             if float(brake) < 0.01:
                 brake = 0.0
 
@@ -154,19 +128,9 @@ class DCCarlaEnv(BaseCarlaEnv):
             "veolcity": vector_to_array(self.vehicle.get_velocity()),
             "target_location": vector_to_array(self.target_location),
         }
-        # # To inspect images, run:
-        # import pdb; pdb.set_trace()
-        # import matplotlib.pyplot as plt
-        # plt.imshow(next_obs)
-        # plt.show()
-
-        done = False  # self.count >= self.max_episode_steps
-        if done:
-            print(
-                "Episode success: I've reached the episode horizon ({}).".format(
-                    self.max_episode_steps
-                )
-            )
+        next_obs_sensor = np.hstack(
+            [value for key, value in next_obs.items() if key != "image"]
+        )
 
         info = {
             **{f"reward_{key}": value for key, value in reward_dict.items()},
@@ -180,13 +144,10 @@ class DCCarlaEnv(BaseCarlaEnv):
         }
 
         done = any(done_dict.values())
-        next_obs_sensor = np.hstack(
-            [value for key, value in next_obs.items() if key != "image"]
-        )
 
         return (
             {"sensor": next_obs_sensor},
             reward,
             done,
             info,
-        )  # , 'image': next_obs_image
+        )
