@@ -1,7 +1,7 @@
 import collections
 import math
 import weakref
-from typing import Optional
+from typing import Optional, cast
 
 import carla
 
@@ -19,7 +19,9 @@ class CollisionSensor(object):
         self._parent = parent_actor
         world = self._parent.get_world()
         bp = world.get_blueprint_library().find("sensor.other.collision")
-        self.sensor = world.spawn_actor(bp, carla.Transform(), attach_to=self._parent)
+        self.sensor = cast(carla.Sensor, world.spawn_actor(
+            bp, carla.Transform(), attach_to=self._parent
+        ))
         # We need to pass the lambda a weak reference to self to avoid circular
         # reference.
         weak_self = weakref.ref(self)
@@ -65,9 +67,9 @@ class LaneInvasionSensor(object):
             self._parent = parent_actor
             parent_world = self._parent.get_world()
             bp = parent_world.get_blueprint_library().find("sensor.other.lane_invasion")
-            self.sensor = parent_world.spawn_actor(
+            self.sensor = cast(carla.Sensor, parent_world.spawn_actor(
                 bp, carla.Transform(), attach_to=self._parent
-            )
+            ))
             # We need to pass the lambda a weak reference to self to avoid circular
             # reference.
             weak_self = weakref.ref(self)

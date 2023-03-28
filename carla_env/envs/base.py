@@ -5,7 +5,7 @@ import os
 import pickle as pkl
 import random
 import time
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import carla
 import gym
@@ -110,10 +110,13 @@ class BaseCarlaEnv(abc.ABC, gym.Env[dict, np.ndarray]):
         self.lidar_obj = self.get_lidar_sensor()
         location = carla.Location(x=1.6, z=1.7)
 
-        self.lidar_sensor = self.world.try_spawn_actor(
-            self.lidar_obj,
-            carla.Transform(location, carla.Rotation(yaw=0.0)),
-            attach_to=self.vehicle,
+        self.lidar_sensor = cast(
+            carla.Sensor,
+            self.world.try_spawn_actor(
+                self.lidar_obj,
+                carla.Transform(location, carla.Rotation(yaw=0.0)),
+                attach_to=self.vehicle,
+            ),
         )
 
         #  dataset
@@ -384,7 +387,9 @@ class BaseCarlaEnv(abc.ABC, gym.Env[dict, np.ndarray]):
                 continue
 
             # if the object is not in our lane it's not an obstacle
-            target_vehicle_waypoint = self.map.get_waypoint(target_vehicle.get_location())
+            target_vehicle_waypoint = self.map.get_waypoint(
+                target_vehicle.get_location()
+            )
             if (
                 target_vehicle_waypoint.road_id != ego_vehicle_waypoint.road_id
                 or target_vehicle_waypoint.lane_id != ego_vehicle_waypoint.lane_id

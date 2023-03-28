@@ -1,12 +1,11 @@
+import queue
+from typing import List, Tuple
+
 import carla
-
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+from typing_extensions import Unpack
 
 
-class CarlaSyncMode(object):
+class CarlaSyncMode:
     """
     Context manager to synchronize output from different sensors. Synchronous
     mode is enabled as long as we are inside this context
@@ -17,12 +16,12 @@ class CarlaSyncMode(object):
 
     """
 
-    def __init__(self, world: carla.World, *sensors: carla.Actor, **kwargs):
+    def __init__(self, world: carla.World, *sensors: carla.Sensor, fps: float = 20):
         self.world = world
         self.sensors = sensors
         self.frame = None
-        self.delta_seconds: float = 1.0 / kwargs.get("fps", 20)
-        self._queues = []
+        self.delta_seconds = 1.0 / fps
+        self._queues: List[queue.Queue] = []
         self._settings = None
 
         self.start()
@@ -48,15 +47,17 @@ class CarlaSyncMode(object):
 
     def tick(self, timeout: float):
         self.frame = self.world.tick()
-        data = [self._retrieve_data(q, timeout) for q in self._queues]
+        data: Tuple[
+            carla.WorldSnapshot, Unpack[Tuple[carla.SensorData, ...]]
+        ] = tuple(self._retrieve_data(q, timeout) for q in self._queues)
         assert all(x.frame == self.frame for x in data)
         return data
 
     def __exit__(self, *args, **kwargs):
-        self.world.apply_settings(self._settings)
+        if self._settings is not None:
+            self.world.apply_settings(self._settings)
 
-    def _retrieve_data(self, sensor_queue, timeout):
-        # import ipdb;ipdb.set_trace()
+    def _retrieve_data(self, sensor_queue: queue.Queue, timeout: float):
         while True:
             data = sensor_queue.get(timeout=timeout)
             if data.frame == self.frame:

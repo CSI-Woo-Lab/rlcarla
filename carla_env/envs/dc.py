@@ -29,11 +29,11 @@ class DCCarlaEnv(BaseCarlaEnv):
         low = -1.0
         high = 1.0
 
-        self.action_space = DotMap()    # type: ignore
+        self.action_space = DotMap()  # type: ignore
         self.action_space.low.min = lambda: low
         self.action_space.high.max = lambda: high
         self.action_space.shape = (2,)
-        self.observation_space = DotMap()   # type: ignore
+        self.observation_space = DotMap()  # type: ignore
         self.observation_space.dtype = np.dtype(np.uint8)
 
         self.action_space.sample = lambda: np.random.uniform(
@@ -49,17 +49,19 @@ class DCCarlaEnv(BaseCarlaEnv):
         # Example: carla_data/carla-town01-224x224-fov90-1k-2020-05-20-15-00-00
         return os.path.join(
             "carla_data",
-            "-".join([
-                "carla",
-                self.map.name.lower().split("/")[-1],
-                f"{self.vision_size}x{self.vision_size}",
-                f"fov{self.vision_fov}",
-                f"{self.frame_skip}" if self.frame_skip > 1 else "",
-                "multiagent" if self.multiagent else "",
-                "lights" if self.follow_traffic_lights else "",
-                f"{self.max_episode_steps // 1000}k",
-                now.strftime("%Y-%m-%d-%H-%M-%S"),
-            ]),
+            "-".join(
+                [
+                    "carla",
+                    self.map.name.lower().split("/")[-1],
+                    f"{self.vision_size}x{self.vision_size}",
+                    f"fov{self.vision_fov}",
+                    f"{self.frame_skip}" if self.frame_skip > 1 else "",
+                    "multiagent" if self.multiagent else "",
+                    "lights" if self.follow_traffic_lights else "",
+                    f"{self.max_episode_steps // 1000}k",
+                    now.strftime("%Y-%m-%d-%H-%M-%S"),
+                ]
+            ),
         )
 
     def goal_reaching_reward(self, vehicle: carla.Vehicle):

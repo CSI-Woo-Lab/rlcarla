@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
 import numpy as np
 
 from . import command
@@ -3941,7 +3941,7 @@ class Sensor(Actor):
 	is_listening: bool
 	"""When True the sensor will be waiting for data."""
 
-	def listen(self, callback: function):
+	def listen(self, callback: Callable[[SensorData], None]) -> None:
 		"""
 		The function the sensor will be calling to every time a new measurement is received. This function needs for an argument containing an object type carla.SensorData to work with.
 
@@ -5648,7 +5648,7 @@ class World:
 		"""
 		...
 
-	def on_tick(self, callback: WorldSnapshot) -> int:
+	def on_tick(self, callback: Callable[[WorldSnapshot], int]) -> int:
 		"""
 		This method is used in [__asynchronous__ mode](https://carla.readthedocs.io/en/latest/adv_synchrony_timestep/). It starts callbacks from the client for the function defined as `callback`, and returns the ID of the callback. The function will be called everytime the server ticks. It requires a carla.WorldSnapshot as argument, which can be retrieved from wait_for_tick(). Use remove_on_tick() to stop the callbacks.
 
