@@ -8,7 +8,7 @@ import numpy as np
 from carla_env.envs.base import BaseCarlaEnv
 from utils.lidar import generate_lidar_bin
 from utils.sensors import CollisionSensor, LaneInvasionSensor
-from utils.vector import rotation_to_array, vector_to_array
+from utils.vector import to_array
 
 
 class BCCarlaEnv(BaseCarlaEnv):
@@ -111,13 +111,13 @@ class BCCarlaEnv(BaseCarlaEnv):
         next_obs = {
             "lidar": np.array(lidar_bin),
             "control": np.array([throttle, steer, brake]),
-            "acceleration": vector_to_array(self.vehicle.get_acceleration()),
-            "angular_veolcity": vector_to_array(self.vehicle.get_angular_velocity()),
-            "location": vector_to_array(self.vehicle.get_location()),
-            "rotation": rotation_to_array(rotation),
-            "forward_vector": vector_to_array(rotation.get_forward_vector()),
-            "veolcity": vector_to_array(self.vehicle.get_velocity()),
-            "target_location": vector_to_array(self.target_location),
+            "acceleration": to_array(self.vehicle.get_acceleration()),
+            "angular_veolcity": to_array(self.vehicle.get_angular_velocity()),
+            "location": to_array(self.vehicle.get_location()),
+            "rotation": to_array(rotation),
+            "forward_vector": to_array(rotation.get_forward_vector()),
+            "veolcity": to_array(self.vehicle.get_velocity()),
+            "target_location": to_array(self.target_location),
         }
 
         done = self.count >= self.max_episode_steps
