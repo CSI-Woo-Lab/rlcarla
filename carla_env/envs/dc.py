@@ -9,7 +9,10 @@ from dotmap import DotMap
 
 from carla_env.envs.base import BaseCarlaEnv
 from utils.lidar import generate_lidar_bin
+from utils.logger import Logging
 from utils.vector import rotation_to_array, vector_to_array
+
+logger = Logging.get_logger(__name__)
 
 
 class DCCarlaEnv(BaseCarlaEnv):
@@ -110,13 +113,18 @@ class DCCarlaEnv(BaseCarlaEnv):
             )
             self.vehicle.apply_control(vehicle_control)
 
+        if self.count == 0:
+            logger.info(
+                "Vehicle starts at: %s",
+                vector_to_array(self.vehicle.get_location()),
+            )
+
         # Advance the simulation and wait for the data.
         _, lidar_sensor = self.sync_mode.tick(timeout=10.0)
         lidar_bin = generate_lidar_bin(lidar_sensor, self.num_theta_bin, self.range)
+        self.count += 1
 
         reward, reward_dict, done_dict = self.goal_reaching_reward(self.vehicle)
-
-        self.count += 1
 
         rotation = self.vehicle.get_transform().rotation
         next_obs = {
@@ -146,6 +154,16 @@ class DCCarlaEnv(BaseCarlaEnv):
         }
 
         done = any(done_dict.values())
+
+        if done_dict["reached_max_steps"]:
+            logger.warning("Episode reached max steps. Terminating episode.")
+
+        if self.count % 50 == 0 or done:
+            logger.info("Step: %s", self.count)
+            logger.info("Vehicle: %s", next_obs["location"])
+            logger.info("Target: %s", next_obs["target_location"])
+            logger.info("Reward: %s (%s)", reward, reward_dict)
+            logger.info("Done: %s (%s)", done, done_dict)
 
         return (
             {"sensor": next_obs_sensor},

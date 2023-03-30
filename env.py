@@ -1,3 +1,5 @@
+import logging
+import os
 from typing import Any, Callable, Generic, TypeVar
 
 import flax
@@ -8,6 +10,7 @@ from typing_extensions import Concatenate, ParamSpec
 from carla_env.behavior_cloning import behavior_cloning
 from carla_env.collect_data import collect_data
 from utils.arguments import parse_args
+from utils.logger import Logging
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -31,6 +34,15 @@ class Model(Generic[P, R]):
 
 def main():
     args = parse_args()
+
+    logging_path = os.path.join(args.data_path or os.getcwd(), "outputs.log")
+    print("Logging to", logging_path)
+    Logging.setup(
+        filepath=logging_path,
+        level=logging.INFO,
+        formatter="(%(asctime)s) [%(levelname)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
     if args.class_mode == "bc":
         behavior_cloning(args)

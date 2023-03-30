@@ -578,6 +578,7 @@ class BaseCarlaEnv(abc.ABC, gym.Env[dict, np.ndarray]):
             "collided_done": collided_done,
             "traffic_light_done": False,
             "object_collided_done": object_collided_done,
+            "reached_max_steps": self.count >= self.max_episode_steps,
         }
 
         return total_reward, reward_dict, done_dict

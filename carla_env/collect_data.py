@@ -16,7 +16,9 @@ from carla_env import DCCarlaEnv
 from carla_env.dataset import Dataset, dump_dataset
 from carla_env.weathers import WEATHERS
 from utils.arguments import EnvArguments
+from utils.logger import Logging
 
+logger = Logging.get_logger(__name__)
 Params = flax.core.FrozenDict[str, Any]
 
 
@@ -53,6 +55,8 @@ def collect_data(args: EnvArguments):
         terminals: List[bool] = []
         infos: List[dict] = []
 
+        logger.info("EPISODE: %d (%d/1,000,000)", j, total_step)
+
         env.reset_init()
         env.reset()
         done = False
@@ -73,9 +77,8 @@ def collect_data(args: EnvArguments):
 
         total_step += curr_steps
 
-        print("Total step: ", total_step)
         if total_step > 1_000_000:
-            print("Data collection complete!")
+            logger.info("Finished collecting data")
             break
 
         dataset: Dataset = {
@@ -89,14 +92,6 @@ def collect_data(args: EnvArguments):
             "terminals": np.array(terminals),
             "infos": infos,
         }
-
-        print("  Sensor shape =", dataset["observations"]["sensor"].shape)
-        print("   Image shape =", dataset["observations"]["image"].shape)
-        print("    Task shape =", dataset["observations"]["task"].shape)
-        print("  Action shape =", dataset["actions"].shape)
-        print(" Rewards shape =", dataset["rewards"].shape)
-        print("Terminal shape =", dataset["terminals"].shape)
-        print(dataset["infos"][-1])
 
         if infos[-1]["done_dist_done"]:
             filename = os.path.join(env.record_dir, f"episode_{j}.pkl")
