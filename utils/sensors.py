@@ -5,7 +5,7 @@ from typing import Optional, cast
 
 import carla
 
-from carla_env.envs.base import BaseCarlaEnv
+from carla_env.base import BaseCarlaEnvironment
 
 # ==============================================================================
 # -- CollisionSensor -----------------------------------------------------------
@@ -56,7 +56,7 @@ class LaneInvasionSensor(object):
     def __init__(
         self,
         parent_actor: carla.Vehicle,
-        world: BaseCarlaEnv,
+        world: BaseCarlaEnvironment,
         agent: Optional[carla.Actor] = None,
     ):
         self.sensor = None

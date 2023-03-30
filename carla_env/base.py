@@ -18,14 +18,14 @@ from typing_extensions import Literal
 from agents.navigation.global_route_planner_dao import GlobalRoutePlannerDAO
 from agents.tools.misc import is_within_distance_ahead
 from carla_env.dataset import Dataset, load_datasets
-from carla_env.envs.utils import build_goal_candidate
+from carla_env.utils import build_goal_candidate
 from utils.arguments import EnvArguments
 from utils.carla_sync_mode import CarlaSyncMode
 from utils.roaming_agent import RoamingAgent
 from utils.route_planner import CustomGlobalRoutePlanner
 
 
-class BaseCarlaEnv(abc.ABC, gym.Env[dict, np.ndarray]):
+class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
     OBS_IDX = {
         "control": np.array([0, 1, 2]),
         "acceleration": np.array([3, 4, 5]),
