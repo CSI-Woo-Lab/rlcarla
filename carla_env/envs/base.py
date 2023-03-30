@@ -5,6 +5,7 @@ import os
 import pickle as pkl
 import random
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import carla
@@ -16,6 +17,7 @@ from typing_extensions import Literal
 
 from agents.navigation.global_route_planner_dao import GlobalRoutePlannerDAO
 from agents.tools.misc import is_within_distance_ahead
+from carla_env.dataset import Dataset, load_datasets
 from carla_env.envs.utils import build_goal_candidate
 from utils.arguments import EnvArguments
 from utils.carla_sync_mode import CarlaSyncMode
@@ -48,13 +50,13 @@ class BaseCarlaEnv(abc.ABC, gym.Env[dict, np.ndarray]):
         self.image_model = image_model
         self.weather = weather
 
-        self.record_dir = "./carla_data"
+        self.record_dir = Path.cwd() / "carla_data"
 
         self.vision_size = args.vision_size
         self.vision_fov = args.vision_fov
 
         self.frame_skip = args.frame_skip
-        self.max_episode_steps = args.steps
+        self.max_episode_steps = args.max_steps
         self.multiagent = args.multiagent
         self.start_lane = args.lane
         self.follow_traffic_lights = args.lights
@@ -602,14 +604,7 @@ class BaseCarlaEnv(abc.ABC, gym.Env[dict, np.ndarray]):
         pygame.quit()
         print("done.")
 
-    def get_dataset(self):
-        datasets_list = []
-        data_path = self.data_path
-
-        if data_path is not None and os.path.exists(data_path):
-            for filename in glob.glob(data_path + "/*.pkl"):
-                with open(os.path.join(os.getcwd(), filename), "rb") as f:
-                    datasets = pkl.load(f)
-                    datasets_list.append(datasets)
-
-        return datasets_list
+    def get_dataset(self) -> List[Dataset]:
+        if self.data_path is None or not self.data_path.exists():
+            return []
+        return list(load_datasets(self.data_path))

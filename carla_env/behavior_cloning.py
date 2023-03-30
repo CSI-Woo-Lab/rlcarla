@@ -1,5 +1,4 @@
-import glob
-import os
+from pathlib import Path
 from typing import Any
 
 import flax
@@ -7,7 +6,7 @@ import numpy as np
 import tqdm
 
 from carla_env import BCCarlaEnv
-from carla_env.dataset import load_dataset
+from carla_env.dataset import load_datasets
 from carla_env.weathers import WEATHERS
 from offline_baselines_jax.bc.bc import BC
 from offline_baselines_jax.bc.policies import MultiInputPolicy
@@ -22,11 +21,8 @@ def behavior_cloning(args: EnvArguments):
         return
 
     data_path = args.data_path
-    if data_path is not None and os.path.exists(data_path):
-        datasets = [
-            load_dataset(filename)
-            for filename in glob.glob(os.path.join(data_path + "*.pkl"))
-        ]
+    if data_path is not None and data_path.exists():
+        datasets = load_datasets(data_path)
     else:
         datasets = None
 
@@ -35,7 +31,7 @@ def behavior_cloning(args: EnvArguments):
         image_model=None,
         weather=WEATHERS[0],
         carla_ip=args.carla_ip,
-        carla_port=2000 - args.route * 5,
+        carla_port=2000 - args.num_routes * 5,
     )
     policy_kwargs = {"net_arch": [256, 256, 256, 256]}
     model = BC(
@@ -92,4 +88,6 @@ def behavior_cloning(args: EnvArguments):
 
     for i in range(15):
         model.learn(total_timesteps=10000, log_interval=1)
-        model.save(os.path.join("models", f"{args.mode}_model_route_{args.route}_{i}"))
+        model.save(
+            Path.cwd() / "models" / f"{args.mode}_model_route_{args.num_routes}_{i}"
+        )

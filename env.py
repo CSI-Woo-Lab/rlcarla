@@ -1,5 +1,5 @@
 import logging
-import os
+from pathlib import Path
 from typing import Any, Callable, Generic, TypeVar
 
 import flax
@@ -35,7 +35,7 @@ class Model(Generic[P, R]):
 def main():
     args = parse_args()
 
-    logging_path = os.path.join(args.data_path or os.getcwd(), "outputs.log")
+    logging_path = (args.data_path or Path.cwd()) / "outputs.log"
     print("Logging to", logging_path)
     Logging.setup(
         filepath=logging_path,

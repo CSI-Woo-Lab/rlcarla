@@ -1,5 +1,4 @@
 import datetime
-import os
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, cast
 
@@ -50,9 +49,10 @@ class DCCarlaEnv(BaseCarlaEnv):
         now = datetime.datetime.now()
 
         # Example: carla_data/carla-town01-224x224-fov90-1k-2020-05-20-15-00-00
-        return os.path.join(
-            "carla_data",
-            "-".join(
+        return (
+            Path.cwd()
+            / "carla_data"
+            / "-".join(
                 [
                     "carla",
                     self.map.name.lower().split("/")[-1],
@@ -64,7 +64,7 @@ class DCCarlaEnv(BaseCarlaEnv):
                     f"{self.max_episode_steps // 1000}k",
                     now.strftime("%Y-%m-%d-%H-%M-%S"),
                 ]
-            ),
+            )
         )
 
     def goal_reaching_reward(self, vehicle: carla.Vehicle):

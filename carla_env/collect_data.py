@@ -6,7 +6,6 @@ python PythonAPI/carla/agents/navigation/data_collection_agent.py \
     --vision_size 256 --vision_fov 90 --steps 10000 --weather --lights
 """
 
-import os
 from typing import Any, List
 
 import flax
@@ -32,7 +31,7 @@ def collect_data(args: EnvArguments):
         image_model=None,
         weather=WEATHERS[0],
         carla_ip=args.carla_ip,
-        carla_port=2000 - args.route * 5,
+        carla_port=2000 - args.num_routes * 5,
     )
 
     curr_steps = 0
@@ -40,9 +39,8 @@ def collect_data(args: EnvArguments):
     weather = "ClearNoon"
     env.weather = "ClearNoon"
 
-    record_dirname_per_weather = os.path.join(env.record_dir, "record", weather)
-    if not os.path.exists(record_dirname_per_weather):
-        os.mkdir(record_dirname_per_weather)
+    record_dirname_per_weather = env.record_dir / "record" / weather
+    record_dirname_per_weather.mkdir(parents=True, exist_ok=True)
 
     total_step = 0
     for j in range(12000):
@@ -94,5 +92,5 @@ def collect_data(args: EnvArguments):
         }
 
         if infos[-1]["done_dist_done"]:
-            filename = os.path.join(env.record_dir, f"episode_{j}.pkl")
+            filename = env.record_dir / f"episode_{j}.pkl"
             dump_dataset(dataset, filename)
