@@ -155,15 +155,15 @@ class DCCarlaEnv(BaseCarlaEnv):
 
         done = any(done_dict.values())
 
-        if done_dict["reached_max_steps"]:
-            logger.warning("Episode reached max steps. Terminating episode.")
-
         if self.count % 50 == 0 or done:
             logger.info("Step: %s", self.count)
             logger.info("Vehicle: %s", next_obs["location"])
             logger.info("Target: %s", next_obs["target_location"])
             logger.info("Reward: %s (%s)", reward, reward_dict)
             logger.info("Done: %s (%s)", done, done_dict)
+
+        if done_dict["reached_max_steps"]:
+            logger.warning("Episode reached max steps. Terminating episode.")
 
         return (
             {"sensor": next_obs_sensor},
