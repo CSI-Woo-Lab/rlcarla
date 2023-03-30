@@ -19,13 +19,27 @@ from agents.navigation.global_route_planner_dao import GlobalRoutePlannerDAO
 from agents.tools.misc import is_within_distance_ahead
 from carla_env.dataset import Dataset, load_datasets
 from carla_env.utils import build_goal_candidate
-from utils.arguments import EnvArguments
+from utils.arguments import ExperimentArguments
 from utils.carla_sync_mode import CarlaSyncMode
 from utils.roaming_agent import RoamingAgent
 from utils.route_planner import CustomGlobalRoutePlanner
 
 
 class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
+    """Base Carla Environment.
+
+    This class is the base class for all Carla environments. It provides the basic
+    functionality to connect to a Carla server, spawn a vehicle, and control it. It also
+    provides the basic functionality to record the data from the sensors.
+
+    Args:
+        args: Experiment arguments.
+        image_model: Image model to be used for image processing.
+        weather: Weather to be used in the environment.
+        carla_ip: IP address of the Carla server.
+        carla_port: Port of the Carla server.
+    """
+
     OBS_IDX = {
         "control": np.array([0, 1, 2]),
         "acceleration": np.array([3, 4, 5]),
@@ -39,7 +53,7 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
 
     def __init__(
         self,
-        args: EnvArguments,
+        args: ExperimentArguments,
         image_model: Optional[Any],
         weather: str,
         carla_ip: str,

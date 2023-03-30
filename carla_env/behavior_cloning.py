@@ -1,3 +1,5 @@
+"""Behavior Cloning Environment."""
+
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -12,7 +14,7 @@ from carla_env.dataset import load_datasets
 from carla_env.weathers import WEATHERS
 from offline_baselines_jax.bc.bc import BC
 from offline_baselines_jax.bc.policies import MultiInputPolicy
-from utils.arguments import EnvArguments
+from utils.arguments import ExperimentArguments
 from utils.lidar import generate_lidar_bin
 from utils.sensors import CollisionSensor, LaneInvasionSensor
 from utils.vector import to_array
@@ -21,6 +23,8 @@ Params = flax.core.FrozenDict[str, Any]
 
 
 class BehaviorCloningCarlaEnvironment(BaseCarlaEnvironment):
+    """Behavior Cloning Environment."""
+
     def _init(self):
         # dummy variables, to match deep mind control's APIs
         self.action_space = gym.spaces.Box(shape=(2,), low=-1, high=1)
@@ -173,7 +177,12 @@ class BehaviorCloningCarlaEnvironment(BaseCarlaEnvironment):
         )
 
 
-def behavior_cloning(args: EnvArguments):
+def behavior_cloning(args: ExperimentArguments):
+    """Behavior cloning experiment.
+    
+    Args:
+        args (ExperimentArguments): Experiment arguments.
+    """
     if args.carla_ip is None:
         print("Please pass your carla IP address")
         return

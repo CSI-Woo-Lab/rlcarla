@@ -14,7 +14,7 @@ class ClassMode(Enum):
 
 
 @dataclass
-class EnvArguments:
+class ExperimentArguments:
     """Arguments for running env.py."""
 
     vision_size: int
@@ -162,4 +162,4 @@ def parse_args():
     parser.add_argument("--points_per_second", type=int, default=120000)
 
     args = parser.parse_args()
-    return EnvArguments(**vars(args))
+    return ExperimentArguments(**vars(args))

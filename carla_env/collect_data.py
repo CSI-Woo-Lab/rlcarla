@@ -1,4 +1,4 @@
-"""python collect_data.py
+"""Collect data from Carla simulator.
 
 example call:
 ./PythonAPI/util/config.py --map Town01 --delta-seconds 0.05
@@ -8,7 +8,7 @@ python PythonAPI/carla/agents/navigation/data_collection_agent.py \
 
 import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple
 
 import carla
 import flax
@@ -18,7 +18,7 @@ from dotmap import DotMap
 from carla_env.base import BaseCarlaEnvironment
 from carla_env.dataset import Dataset, dump_dataset
 from carla_env.weathers import WEATHERS
-from utils.arguments import EnvArguments
+from utils.arguments import ExperimentArguments
 from utils.lidar import generate_lidar_bin
 from utils.logger import Logging
 from utils.vector import to_array
@@ -28,6 +28,8 @@ Params = flax.core.FrozenDict[str, Any]
 
 
 class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
+    """Carla environment for data collection."""
+
     def _init(self):
         self.lidar_sensor = self.world.try_spawn_actor(
             self.lidar_obj,
@@ -59,6 +61,14 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
         self.world.tick()
 
     def __create_record_dirpath(self):
+        """Create a directory path to save the collected data.
+        
+        Returns:
+            Path: Path to the directory to save the collected data.
+            
+        Example:
+            carla_data/carla-town01-224x224-fov90-1k-2020-05-20-15-00-00
+        """
         now = datetime.datetime.now()
 
         # Example: carla_data/carla-town01-224x224-fov90-1k-2020-05-20-15-00-00
@@ -99,9 +109,38 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
     def step(
         self,
         action: Optional[carla.VehicleControl] = None,
-        traffic_light_color: Optional[str] = None,
-    ) -> Tuple[Dict[str, np.ndarray], np.ndarray, bool, Dict[str, Any]]:
-        return super().step(cast(np.ndarray, action), traffic_light_color)
+        traffic_light_color: Optional[str] = "",
+    ) -> Tuple[Dict[str, Any], np.ndarray, bool, Dict[str, Any]]:
+        """Step the environment.
+        
+        Args:
+            action (carla.VehicleControl, optional): Vehicle control. Defaults to None.
+            traffic_light_color (str, optional): Traffic light color. Defaults to "".
+            
+        Returns:
+            Tuple[Dict[str, Any], np.ndarray, bool, Dict[str, Any]]:
+                next_obs (Dict[str, Any]): Next observation.
+                reward (np.ndarray): Reward.
+                done (bool): Whether the episode is done.
+                info (Dict[str, Any]): Info.
+
+        Raises:
+            ValueError: Raises an error if frame_skip is less than 1.
+        """
+        rewards: List[np.ndarray] = []
+        next_obs, done, info = None, None, None
+        for _ in range(self.frame_skip):  # default 1
+            next_obs, reward, done, info = self._simulator_step(
+                action, traffic_light_color
+            )
+            rewards.append(reward)
+
+            if done:
+                break
+
+        if next_obs is None or done is None or info is None:
+            raise ValueError("frame_skip >= 1")
+        return next_obs, np.mean(rewards), done, info
 
     def _simulator_step(
         self,
@@ -186,7 +225,15 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
         )
 
 
-def collect_data(args: EnvArguments):
+def collect_data(args: ExperimentArguments):
+    """Collect data from CARLA simulator.
+    
+    Args:
+        args (ExperimentArguments): Experiment arguments.
+        
+    Raises:
+        ValueError: Raises an error if carla_ip is None.
+    """
     if args.carla_ip is None:
         print("Please pass your carla IP address")
         return
