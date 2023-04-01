@@ -38,8 +38,7 @@ class ExperimentArguments:
     max_steps: int
     """Maximum number of steps per episode"""
 
-    class_mode: str
-    """bc: for behavior_cloning, dc: for data_collection_down"""
+    class_mode: ClassMode
 
     carla_ip: Optional[str]
     """IP address of the carla server"""

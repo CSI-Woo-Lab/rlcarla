@@ -9,7 +9,7 @@ from typing_extensions import Concatenate, ParamSpec
 
 from carla_env.behavior_cloning import behavior_cloning
 from carla_env.collect_data import collect_data
-from utils.arguments import parse_args
+from utils.arguments import ClassMode, parse_args
 from utils.logger import Logging
 
 P = ParamSpec("P")
@@ -44,9 +44,9 @@ def main():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    if args.class_mode == "bc":
+    if args.class_mode == ClassMode.BEHAVIOR_CLONING:
         behavior_cloning(args)
-    elif args.class_mode == "dc":
+    elif args.class_mode == ClassMode.DATA_COLLECTION:
         collect_data(args)
 
 

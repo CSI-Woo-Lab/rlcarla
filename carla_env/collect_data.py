@@ -265,7 +265,7 @@ def collect_data(args: ExperimentArguments):
         terminals: List[bool] = []
         infos: List[dict] = []
 
-        logger.info("EPISODE: %d (%d/1,000,000)", j, total_step)
+        logger.info("EPISODE: %d (%d/1,000,000)", j, format(total_step, ","))
 
         env.reset_init()
         env.reset()
@@ -305,4 +305,6 @@ def collect_data(args: ExperimentArguments):
 
         if infos[-1]["done_dist_done"]:
             filename = env.record_dir / f"episode_{j}.pkl"
-            dump_dataset(dataset, filename)
+        else:
+            filename = env.record_dir / f"episode_{j}_failed.pkl"
+        dump_dataset(dataset, filename)

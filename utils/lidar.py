@@ -10,14 +10,12 @@ def generate_lidar_bin(lidar_sensor, num_theta_bin: float, env_range: float):
     lidar = np.frombuffer(lidar_sensor.raw_data, dtype=np.float32).reshape((-1, 4))
 
     # (x,y,z) to (min_dist,theta,z)
-    lidar_xy = lidar[:, :2]
+    lidar_x = lidar[:, 0]
+    lidar_y = lidar[:, 1]
     lidar_z = lidar[:, 2]
 
-    lidar_xy_cart2pol = np.array(
-        list(map(lambda x: cart2pol(x[0], x[1]), lidar_xy))
-    )
-    lidar_z = np.expand_dims(lidar_z, axis=1)
-    lidar_cylinder: np.ndarray = np.concatenate((lidar_xy_cart2pol, lidar_z), axis=1)
+    lidar_x, lidar_y = cart2pol(lidar_x, lidar_y)
+    lidar_cylinder: np.ndarray = np.vstack((lidar_x, lidar_y, lidar_z)).T
 
     lidar_bin: List[np.ndarray] = []
     empty_cnt = 0
