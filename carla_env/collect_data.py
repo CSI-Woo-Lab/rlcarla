@@ -139,7 +139,7 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
                 break
 
         if next_obs is None or done is None or info is None:
-            raise ValueError("frame_skip >= 1")
+            raise ValueError("frame_skip must be greater than 0.")
         return next_obs, np.mean(rewards), done, info
 
     def _simulator_step(
@@ -265,7 +265,7 @@ def collect_data(args: ExperimentArguments):
         terminals: List[bool] = []
         infos: List[dict] = []
 
-        logger.info("EPISODE: %d (%d/1,000,000)", j, format(total_step, ","))
+        logger.info("EPISODE: %s (%s/1,000,000)", j, format(total_step, ","))
 
         env.reset_init()
         env.reset()
@@ -301,6 +301,7 @@ def collect_data(args: ExperimentArguments):
             "rewards": np.array(rewards),
             "terminals": np.array(terminals),
             "infos": infos,
+            "lidar_bin": args.num_theta_bin,
         }
 
         if infos[-1]["done_dist_done"]:

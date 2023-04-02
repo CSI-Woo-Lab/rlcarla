@@ -168,3 +168,7 @@ nohup.out
 # Data and logs
 carla_data/
 log/
+
+# Playground
+playground.*
+playground/

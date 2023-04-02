@@ -20,6 +20,7 @@ class Dataset(TypedDict):
     rewards: np.ndarray
     terminals: np.ndarray
     infos: List[dict]
+    lidar_bin: int
 
 
 def load_datasets(dirname: Union[str, Path]):

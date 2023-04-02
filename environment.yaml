@@ -17,6 +17,7 @@ dependencies:
     - flax
     - jax-resnet
     - networkx
+    - opencv-python
     - stable-baselines3
     - tensorboard
     - tensorflow-probability
