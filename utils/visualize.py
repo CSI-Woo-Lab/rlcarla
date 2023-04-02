@@ -10,15 +10,27 @@ ROUTE_IMAGE = "route_image/Route_point.png"
 
 
 @overload
-def draw_path(dataset: Dataset) -> cv2.Mat:
+def draw_path(
+    dataset: Dataset,
+    output_filepath: None = None,
+    background: Optional[Union[cv2.Mat, np.ndarray]] = None,
+) -> cv2.Mat:
     ...
 
 @overload
-def draw_path(dataset: Dataset, output_filepath: Union[str, Path]) -> None:
+def draw_path(
+    dataset: Dataset,
+    output_filepath: Union[str, Path],
+    background: Optional[Union[cv2.Mat, np.ndarray]] = None,
+) -> None:
     ...
 
 
-def draw_path(dataset: Dataset, output_filepath: Optional[Union[str, Path]] = None):
+def draw_path(
+    dataset: Dataset,
+    output_filepath: Optional[Union[str, Path]] = None,
+    background: Optional[Union[cv2.Mat, np.ndarray]] = None,
+):
     """Draw path of the dataset on the route image.
 
     The start point is a green circle, the end point is a purple circle, and the path is
@@ -32,33 +44,51 @@ def draw_path(dataset: Dataset, output_filepath: Optional[Union[str, Path]] = No
     
     """
     # Read background image
-    image = cv2.imread(ROUTE_IMAGE)
+    if background is not None:
+        image = background
+    else:
+        image = cv2.imread(ROUTE_IMAGE)
 
     # Read dataset
     observations = dataset["observations"]
     sensor = observations["sensor"]
-    lidar_bin = 80
+    lidar_bin = dataset.get("lidar_bin", 80)
     offset = lidar_bin + 9
 
     def transform(p: np.ndarray):
-        # Transform from sensor coordinate to image coordinate
-        # Sensor coordinate: X - [-122, 115], Y - [-73, 140]
-        # Image coordinate: X - [0, 1472], Y - [0, 1321]
-        p[:, 0] = (p[:, 0] + 122) * 1472 / 237
-        p[:, 1] = (p[:, 1] + 73) * 1321 / 213
+        """
+        Transform from sensor coordinate to image coordinate
+        Sensor coordinate: X - [-125, 120], Y - [-73, 146]
+        Image coordinate: X - [0, 1472], Y - [0, 1321]
+        Rotation: 0.0125rad, counterclockwise
+
+        """
+
+        # translation
+        p[:, 0], p[:, 1] = (
+            (p[:, 0] + 125) * 1472 / 245,
+            (p[:, 1] + 73) * 1321 / 219,
+        )
+
+        # rotation
+        p[:, 0], p[:, 1] = (
+            p[:, 0] * np.cos(-0.0125) - p[:, 1] * np.sin(-0.0125),
+            p[:, 0] * np.sin(-0.0125) + p[:, 1] * np.cos(-0.0125),
+        )
+
         return p
 
     # Draw path
     path = transform(
         sensor[:, offset:(offset + 2)]
     ).astype(np.int32).reshape((-1, 1, 2))
-    cv2.polylines(image, [path], False, (255, 0, 0), 5, lineType=cv2.LINE_AA)
+    cv2.polylines(image, [path], False, (255, 70, 70), 5, lineType=cv2.LINE_AA)
 
     # Draw start and end point
     start = path[0].reshape(-1)
     end = path[-1].reshape(-1)
 
-    cv2.circle(image, tuple(start), 12, (0, 255, 0), -1, lineType=cv2.LINE_AA)
+    cv2.circle(image, tuple(start), 12, (70, 255, 70), -1, lineType=cv2.LINE_AA)
     cv2.circle(image, tuple(end), 12, (128, 0, 128), -1, lineType=cv2.LINE_AA)
 
     # Draw target location
