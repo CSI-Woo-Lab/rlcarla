@@ -8,7 +8,7 @@ python PythonAPI/carla/agents/navigation/data_collection_agent.py \
 
 import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import carla
 import flax
@@ -36,11 +36,33 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
             carla.Transform(carla.Location(x=1.6, z=1.7), carla.Rotation(yaw=0.0)),
             attach_to=self.vehicle,
         )
-        if self.record_dir is None:
-            self.record_dir = self.__create_record_dirpath()
+        self.record_dir = self.__create_record_dirpath(self.record_dir)
 
         record_path = self.record_dir / "record"
         record_path.mkdir(parents=True, exist_ok=True)
+
+        camera_bp  = self.world.get_blueprint_library().find("sensor.camera.rgb")
+        camera_bp.set_attribute("image_size_x", f"{self.vision_size}")
+        camera_bp.set_attribute("image_size_y", f"{self.vision_size}")
+        camera_bp.set_attribute("fov", f"{self.vision_fov}")
+
+        spawn_point = carla.Transform(
+            carla.Location(1.5, 0.0, 0.0),
+            carla.Rotation(0.0, 0.0, 0.0),
+        )
+        self.camera_sensor = cast(carla.Sensor, self.world.try_spawn_actor(
+            camera_bp, spawn_point, attach_to=self.vehicle
+        ))
+
+        def process_image(image: carla.Image):
+            """Process image from camera sensor and save it to self.image."""
+            image_data = np.frombuffer(image.raw_data, dtype=np.uint8)
+            image_data = image_data.reshape((image.height, image.width, 4))
+            image_data = image_data[:, :, :3]
+            image_data = np.fliplr(image_data)
+            self.image = image_data
+
+        self.camera_sensor.listen(process_image)    # type: ignore
 
         # dummy variables, to match deep mind control's APIs
         low = -1.0
@@ -60,7 +82,11 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
         # roaming carla agent
         self.world.tick()
 
-    def __create_record_dirpath(self):
+    def reset_init(self):
+        self.image = np.zeros((self.vision_size, self.vision_size, 3))
+        return super().reset_init()
+
+    def __create_record_dirpath(self, base_dir: Path = Path.cwd() / "carla_data"):
         """Create a directory path to save the collected data.
         
         Returns:
@@ -73,9 +99,9 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
 
         # Example: carla_data/carla-town01-224x224-fov90-1k-2020-05-20-15-00-00
         return (
-            Path.cwd()
-            / "carla_data"
+            base_dir
             / "-".join(
+                x for x in
                 [
                     "carla",
                     self.map.name.lower().split("/")[-1],
@@ -87,6 +113,7 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
                     f"{self.max_episode_steps // 1000}k",
                     now.strftime("%Y-%m-%d-%H-%M-%S"),
                 ]
+                if x
             )
         )
 
@@ -218,7 +245,7 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
             logger.warning("Episode reached max steps. Terminating episode.")
 
         return (
-            {"sensor": next_obs_sensor},
+            {"sensor": next_obs_sensor, "image": self.image},
             reward,
             done,
             info,
@@ -279,6 +306,7 @@ def collect_data(args: ExperimentArguments):
 
             action = np.array([action.throttle, action.steer, action.brake])
             observations_sensor.append(next_obs["sensor"].copy())
+            observations_image.append(next_obs["image"].copy())
             observations_task.append(task)
             actions.append(action.copy())
             rewards.append(reward)

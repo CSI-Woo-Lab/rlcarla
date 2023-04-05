@@ -18,7 +18,11 @@ class ExperimentArguments:
     """Arguments for running env.py."""
 
     vision_size: int
+    """Size of the vision sensor"""
+
     vision_fov: int
+    """Field of view of the vision sensor"""
+
     weather: bool
     frame_skip: int
     multiagent: bool

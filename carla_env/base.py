@@ -64,7 +64,7 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
         self.image_model = image_model
         self.weather = weather
 
-        self.record_dir = Path.cwd() / "carla_data"
+        self.record_dir = args.data_path
 
         self.vision_size = args.vision_size
         self.vision_fov = args.vision_fov
