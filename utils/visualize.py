@@ -1,7 +1,9 @@
+import pickle as pkl
 from pathlib import Path
 from typing import Optional, Union, overload
 
 import cv2
+import fire
 import numpy as np
 
 from carla_env.dataset import Dataset
@@ -123,3 +125,22 @@ def draw_path(
         cv2.imwrite(str(output_filepath), image)
     else:
         return image
+
+
+class Program:
+    def __init__(self, src: str, dst: Optional[str] = None):
+        self.__src = Path(src)
+        if self.__src.is_file() and dst is None:
+            raise ValueError("dst must be specified when src is a file.")
+        self.__dst = Path(dst) if dst is not None else self.__src
+
+    def draw_path(self):
+        if self.__src.is_dir():
+            for filename in self.__src.glob("*.pkl"):
+                with open(filename, "rb") as f:
+                    dataset = pkl.load(f)
+                draw_path(dataset, output_filepath=self.__dst / f"{filename.stem}.png")
+
+
+if __name__ == "__main__":
+    fire.Fire(Program)
