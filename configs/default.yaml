@@ -7,6 +7,7 @@ multiagent: false
 lane: 0
 lights: false
 num_routes: 0
+vehicle_type: audi.a2
 mode: ours
 routes: []
 random_route: false

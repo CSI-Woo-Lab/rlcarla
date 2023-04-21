@@ -33,7 +33,7 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
     provides the basic functionality to record the data from the sensors.
 
     Args:
-        args: Experiment arguments.
+        config: Experiment configs.
         image_model: Image model to be used for image processing.
         weather: Weather to be used in the environment.
         carla_ip: IP address of the Carla server.
@@ -53,29 +53,30 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
 
     def __init__(
         self,
-        args: ExperimentConfigs,
+        config: ExperimentConfigs,
         image_model: Optional[Any],
         weather: str,
         carla_ip: str,
         carla_port: int,
     ):
         # New Hyperparameter
-        self.random_route = args.random_route
+        self.random_route = config.random_route
         self.image_model = image_model
         self.weather = weather
 
-        self.record_dir = args.data_path
+        self.record_dir = config.data_path
 
-        self.vision_size = args.vision_size
-        self.vision_fov = args.vision_fov
+        self.vision_size = config.vision_size
+        self.vision_fov = config.vision_fov
 
-        self.frame_skip = args.frame_skip
-        self.max_episode_steps = args.max_steps
-        self.multiagent = args.multiagent
-        self.start_lane = args.lane
-        self.follow_traffic_lights = args.lights
+        self.frame_skip = config.frame_skip
+        self.max_episode_steps = config.max_steps
+        self.multiagent = config.multiagent
+        self.start_lane = config.lane
+        self.follow_traffic_lights = config.lights
         self.route = 1
-        self.route_list = args.routes
+        self.route_list = config.routes
+        self.vehicle_type = config.vehicle_type
 
         self.client = carla.Client(carla_ip, carla_port)
         self.client.set_timeout(10.0)
@@ -111,16 +112,16 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
         blueprint_library = self.world.get_blueprint_library()
 
         # set the attributes, all values set as strings
-        self.upper_fov = args.upper_fov
-        self.lower_fov = args.lower_fov
-        self.rotation_frequency = args.rotation_frequency
-        self.range = args.max_range
-        self.num_theta_bin = args.num_theta_bin
+        self.upper_fov = config.upper_fov
+        self.lower_fov = config.lower_fov
+        self.rotation_frequency = config.rotation_frequency
+        self.range = config.max_range
+        self.num_theta_bin = config.num_theta_bin
 
-        self.dropoff_general_rate = args.dropoff_general_rate
-        self.dropoff_intensity_limit = args.dropoff_intensity_limit
-        self.dropoff_zero_intensity = args.dropoff_zero_intensity
-        self.points_per_second = args.points_per_second
+        self.dropoff_general_rate = config.dropoff_general_rate
+        self.dropoff_intensity_limit = config.dropoff_intensity_limit
+        self.dropoff_zero_intensity = config.dropoff_zero_intensity
+        self.points_per_second = config.points_per_second
 
         self.lidar_obj = blueprint_library.find("sensor.lidar.ray_cast")
         self.lidar_obj = self.get_lidar_sensor()
@@ -136,7 +137,7 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
         )
 
         #  dataset
-        self.data_path = args.data_path
+        self.data_path = config.data_path
 
         #  sync mode
         self.sync_mode = CarlaSyncMode(self.world, self.lidar_sensor, fps=20)
@@ -277,7 +278,7 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
 
         if not hasattr(self, "vehicle"):  # then create the ego vehicle
             blueprint_library = self.world.get_blueprint_library()
-            vehicle_blueprint = blueprint_library.find("vehicle.audi.a2")
+            vehicle_blueprint = blueprint_library.find(f"vehicle.{self.vehicle_type}")
             vehicle = self.world.spawn_actor(vehicle_blueprint, vehicle_init_transform)
             if not isinstance(vehicle, carla.Vehicle):
                 raise ValueError

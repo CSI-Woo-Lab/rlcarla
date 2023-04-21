@@ -194,7 +194,7 @@ def behavior_cloning(config: ExperimentConfigs):
         datasets = None
 
     env = BehaviorCloningCarlaEnvironment(
-        args=config,
+        config=config,
         image_model=None,
         weather=WEATHERS[0],
         carla_ip=config.carla_ip,

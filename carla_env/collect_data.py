@@ -268,7 +268,7 @@ def collect_data(config: ExperimentConfigs):
         return
 
     env = DataCollectingCarlaEnvironment(
-        args=config,
+        config=config,
         image_model=None,
         weather=WEATHERS[0],
         carla_ip=config.carla_ip,

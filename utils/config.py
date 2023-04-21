@@ -28,6 +28,9 @@ class ExperimentConfigs:
     routes: List[Tuple[int, int]]
     """List of routes to use"""
 
+    vehicle_type: str
+    """Type of vehicle to use. Example: audi.a2"""
+
     random_route: bool
     """Whether to use random route"""
 
