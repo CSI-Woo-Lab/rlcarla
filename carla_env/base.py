@@ -19,8 +19,8 @@ from agents.navigation.global_route_planner_dao import GlobalRoutePlannerDAO
 from agents.tools.misc import is_within_distance_ahead
 from carla_env.dataset import Dataset, load_datasets
 from carla_env.utils import build_goal_candidate
-from utils.arguments import ExperimentArguments
 from utils.carla_sync_mode import CarlaSyncMode
+from utils.config import ExperimentConfigs
 from utils.roaming_agent import RoamingAgent
 from utils.route_planner import CustomGlobalRoutePlanner
 
@@ -53,7 +53,7 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
 
     def __init__(
         self,
-        args: ExperimentArguments,
+        args: ExperimentConfigs,
         image_model: Optional[Any],
         weather: str,
         carla_ip: str,
@@ -75,7 +75,7 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
         self.start_lane = args.lane
         self.follow_traffic_lights = args.lights
         self.route = 1
-        self.route_list = args.route_list
+        self.route_list = args.routes
 
         self.client = carla.Client(carla_ip, carla_port)
         self.client.set_timeout(10.0)

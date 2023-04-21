@@ -18,7 +18,7 @@ from dotmap import DotMap
 from carla_env.base import BaseCarlaEnvironment
 from carla_env.dataset import Dataset, dump_dataset
 from carla_env.weathers import WEATHERS
-from utils.arguments import ExperimentArguments
+from utils.config import ExperimentConfigs
 from utils.lidar import generate_lidar_bin
 from utils.logger import Logging
 from utils.vector import to_array
@@ -86,7 +86,7 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
         self.image = np.zeros((self.vision_size, self.vision_size, 3))
         return super().reset_init()
 
-    def __create_record_dirpath(self, base_dir: Path = Path.cwd() / "carla_data"):
+    def __create_record_dirpath(self, base_dir: Optional[Path] = None):
         """Create a directory path to save the collected data.
         
         Returns:
@@ -95,6 +95,8 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
         Example:
             carla_data/carla-town01-224x224-fov90-1k-2020-05-20-15-00-00
         """
+        if base_dir is None:
+            base_dir = Path.cwd() / "carla_data"
         now = datetime.datetime.now()
 
         # Example: carla_data/carla-town01-224x224-fov90-1k-2020-05-20-15-00-00
@@ -252,25 +254,25 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
         )
 
 
-def collect_data(args: ExperimentArguments):
+def collect_data(config: ExperimentConfigs):
     """Collect data from CARLA simulator.
     
     Args:
-        args (ExperimentArguments): Experiment arguments.
+        config (ExperimentConfigs): Experiment configs.
         
     Raises:
         ValueError: Raises an error if carla_ip is None.
     """
-    if args.carla_ip is None:
+    if config.carla_ip is None:
         print("Please pass your carla IP address")
         return
 
     env = DataCollectingCarlaEnvironment(
-        args=args,
+        args=config,
         image_model=None,
         weather=WEATHERS[0],
-        carla_ip=args.carla_ip,
-        carla_port=2000 - args.num_routes * 5,
+        carla_ip=config.carla_ip,
+        carla_port=2000 - config.num_routes * 5,
     )
 
     curr_steps = 0
@@ -329,7 +331,7 @@ def collect_data(args: ExperimentArguments):
             "rewards": np.array(rewards),
             "terminals": np.array(terminals),
             "infos": infos,
-            "lidar_bin": args.num_theta_bin,
+            "lidar_bin": config.num_theta_bin,
         }
 
         if infos[-1]["done_dist_done"]:

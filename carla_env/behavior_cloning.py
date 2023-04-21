@@ -14,7 +14,7 @@ from carla_env.dataset import load_datasets
 from carla_env.weathers import WEATHERS
 from offline_baselines_jax.bc.bc import BC
 from offline_baselines_jax.bc.policies import MultiInputPolicy
-from utils.arguments import ExperimentArguments
+from utils.config import ExperimentConfigs
 from utils.lidar import generate_lidar_bin
 from utils.sensors import CollisionSensor, LaneInvasionSensor
 from utils.vector import to_array
@@ -177,28 +177,28 @@ class BehaviorCloningCarlaEnvironment(BaseCarlaEnvironment):
         )
 
 
-def behavior_cloning(args: ExperimentArguments):
+def behavior_cloning(config: ExperimentConfigs):
     """Behavior cloning experiment.
     
     Args:
-        args (ExperimentArguments): Experiment arguments.
+        config (ExperimentConfigs): Experiment configs.
     """
-    if args.carla_ip is None:
+    if config.carla_ip is None:
         print("Please pass your carla IP address")
         return
 
-    data_path = args.data_path
+    data_path = config.data_path
     if data_path is not None and data_path.exists():
         datasets = load_datasets(data_path)
     else:
         datasets = None
 
     env = BehaviorCloningCarlaEnvironment(
-        args=args,
+        args=config,
         image_model=None,
         weather=WEATHERS[0],
-        carla_ip=args.carla_ip,
-        carla_port=2000 - args.num_routes * 5,
+        carla_ip=config.carla_ip,
+        carla_port=2000 - config.num_routes * 5,
     )
     policy_kwargs = {"net_arch": [256, 256, 256, 256]}
     model = BC(
@@ -256,5 +256,5 @@ def behavior_cloning(args: ExperimentArguments):
     for i in range(15):
         model.learn(total_timesteps=10000, log_interval=1)
         model.save(
-            Path.cwd() / "models" / f"{args.mode}_model_route_{args.num_routes}_{i}"
+            Path.cwd() / "models" / f"{config.mode}_model_route_{config.num_routes}_{i}"
         )

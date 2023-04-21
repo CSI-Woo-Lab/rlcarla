@@ -5265,7 +5265,7 @@ class ActorList:
 	A class that contains every actor present on the scene and provides access to them. The list is automatically created and updated by the server and it can be returned using carla.World.
 	"""
 
-	def filter(self, wildcard_pattern: str) -> list:
+	def filter(self, wildcard_pattern: str) -> list[Actor]:
 		"""
 		Filters a list of Actors matching `wildcard_pattern` against their variable type_id (which identifies the blueprint used to spawn them). Matching follows [fnmatch](https://docs.python.org/2/library/fnmatch.html) standard.
 
