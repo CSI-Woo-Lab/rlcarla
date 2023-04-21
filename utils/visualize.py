@@ -133,6 +133,8 @@ class Program:
         if self.__src.is_file() and dst is None:
             raise ValueError("dst must be specified when src is a file.")
         self.__dst = Path(dst) if dst is not None else self.__src
+        if self.__dst.is_file():
+            raise ValueError("dst must be a directory.")
 
     def draw_path(self):
         if self.__src.is_dir():
@@ -140,6 +142,10 @@ class Program:
                 with open(filename, "rb") as f:
                     dataset = pkl.load(f)
                 draw_path(dataset, output_filepath=self.__dst / f"{filename.stem}.png")
+        else:
+            with open(self.__src, "rb") as f:
+                dataset = pkl.load(f)
+            draw_path(dataset, output_filepath=self.__dst / f"{self.__src.stem}.png")
 
 
 if __name__ == "__main__":
