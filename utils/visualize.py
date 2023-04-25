@@ -139,8 +139,12 @@ class Program:
     def draw_path(self):
         if self.__src.is_dir():
             for filename in self.__src.glob("*.pkl"):
-                with open(filename, "rb") as f:
-                    dataset = pkl.load(f)
+                try:
+                    with open(filename, "rb") as f:
+                        dataset = pkl.load(f)
+                except pkl.UnpicklingError as e:
+                    print(f"Failed to load {filename}: {e}")
+                    continue
                 draw_path(dataset, output_filepath=self.__dst / f"{filename.stem}.png")
         else:
             with open(self.__src, "rb") as f:
