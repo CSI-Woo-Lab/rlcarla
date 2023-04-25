@@ -112,16 +112,16 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
         blueprint_library = self.world.get_blueprint_library()
 
         # set the attributes, all values set as strings
-        self.upper_fov = config.upper_fov
-        self.lower_fov = config.lower_fov
-        self.rotation_frequency = config.rotation_frequency
-        self.range = config.max_range
-        self.num_theta_bin = config.num_theta_bin
+        self.upper_fov = config.lidar.upper_fov
+        self.lower_fov = config.lidar.lower_fov
+        self.rotation_frequency = config.lidar.rotation_frequency
+        self.range = config.lidar.max_range
+        self.num_theta_bin = config.lidar.num_theta_bin
 
-        self.dropoff_general_rate = config.dropoff_general_rate
-        self.dropoff_intensity_limit = config.dropoff_intensity_limit
-        self.dropoff_zero_intensity = config.dropoff_zero_intensity
-        self.points_per_second = config.points_per_second
+        self.dropoff_general_rate = config.lidar.dropoff_general_rate
+        self.dropoff_intensity_limit = config.lidar.dropoff_intensity_limit
+        self.dropoff_zero_intensity = config.lidar.dropoff_zero_intensity
+        self.points_per_second = config.lidar.points_per_second
 
         self.lidar_obj = blueprint_library.find("sensor.lidar.ray_cast")
         self.lidar_obj = self.get_lidar_sensor()
@@ -284,9 +284,39 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
                 raise ValueError
             self.vehicle = vehicle
 
+            vehicle_collision_sensor = self.vehicle.get_world().spawn_actor(
+                blueprint_library.find("sensor.other.collision"),
+                carla.Transform(
+                    carla.Location(x=2.5, z=0.7),
+                    carla.Rotation(),
+                ),
+                attach_to=self.vehicle,
+            )
+            if not isinstance(vehicle_collision_sensor, carla.Sensor):
+                raise ValueError
+            self.vehicle_collision_sensor = vehicle_collision_sensor
+
+            def on_collision(event):
+                self.vehicle_map_collided = True
+
+            self.vehicle_collision_sensor.listen(on_collision)
+
         self.vehicle.set_transform(vehicle_init_transform)
         self.vehicle.set_target_velocity(carla.Vector3D())
         self.vehicle.set_target_angular_velocity(carla.Vector3D())
+
+        # Make spectator follow ego vehicle
+        spectator = self.world.get_spectator()
+        if hasattr(self, "tick_callback"):
+            self.world.remove_on_tick(self.tick_callback)
+        self.tick_callback = self.world.on_tick(lambda _: spectator.set_transform(
+            carla.Transform(
+                self.vehicle.get_location() + carla.Location(z=50),
+                carla.Rotation(pitch=-90),
+            )
+        ))
+
+        self.vehicle_map_collided = False
 
         return waypoint_list
 
@@ -351,8 +381,8 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
             batch.append(
                 carla.command.SpawnActor(blueprint, transform).then(
                     carla.command.SetAutopilot(
-                        carla.command.FutureActor, True  # type: ignore
-                    )  # type: ignore
+                        carla.command.FutureActor, True # type: ignore
+                    )
                 )
             )
 
@@ -458,6 +488,20 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
 
         return False, 0.0, None
 
+    def _is_map_hazard(self, vehicle: carla.Vehicle):
+        """
+        :param vehicle_list: list of potential obstacle to check
+        :return: a tuple given by (bool_flag, vehicle), where
+                 - bool_flag is True if there is a vehicle ahead blocking us
+                   and False otherwise
+                 - vehicle is the blocker object itself
+        """
+
+        if self.vehicle_map_collided:
+            return True, -1.0, None
+
+        return False, 0.0, None
+
     def _get_trafficlight_trigger_location(
         self, traffic_light: carla.TrafficLight
     ):  # pylint: disable=no-self-use
@@ -534,6 +578,10 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
         object_hazard, reward, _ = self._is_object_hazard(vehicle, self.object_list)
         return object_hazard, reward
 
+    def _get_map_collided_reward(self, vehicle: carla.Vehicle):
+        map_hazard, reward, _ = self._is_map_hazard(vehicle)
+        return map_hazard, reward
+
     def get_distance_vehicle_target(self, vehicle: carla.Vehicle):
         vehicle_location = vehicle.get_location()
         target_location = self.target_location
@@ -578,6 +626,7 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
             object_collided_done,
             object_collided_reward,
         ) = self._get_object_collided_reward(vehicle)
+        map_collided_done, map_collided_reward = self._get_map_collided_reward(vehicle)
         total_reward: np.ndarray = (
             base_reward + 100 * collision_reward
         )  # + 100 * traffic_light_reward + 100.0 * object_collided_reward
@@ -586,6 +635,7 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
             "collision": collision_reward,
             "traffic_light": traffic_light_reward,
             "object_collision": object_collided_reward,
+            "map_collision": map_collided_reward,
             "base_reward": base_reward,
             "vel_forward": vel_forward,
             "vel_perp": vel_perp,
@@ -595,6 +645,7 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
             "collided_done": collided_done,
             "traffic_light_done": False,
             "object_collided_done": object_collided_done,
+            "map_collided_done": map_collided_done,
             "reached_max_steps": self.count >= self.max_episode_steps,
         }
 

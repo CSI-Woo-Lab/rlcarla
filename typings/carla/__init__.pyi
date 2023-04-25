@@ -5648,7 +5648,7 @@ class World:
 		"""
 		...
 
-	def on_tick(self, callback: Callable[[WorldSnapshot], int]) -> int:
+	def on_tick(self, callback: Callable[[WorldSnapshot], None]) -> int:
 		"""
 		This method is used in [__asynchronous__ mode](https://carla.readthedocs.io/en/latest/adv_synchrony_timestep/). It starts callbacks from the client for the function defined as `callback`, and returns the ID of the callback. The function will be called everytime the server ticks. It requires a carla.WorldSnapshot as argument, which can be retrieved from wait_for_tick(). Use remove_on_tick() to stop the callbacks.
 
@@ -5688,7 +5688,7 @@ class World:
 		"""
 		...
 
-	def spawn_actor(self, blueprint: ActorBlueprint, transform: Transform, attach_to: Actor = None, attachment: AttachmentType = Rigid) -> Actor:
+	def spawn_actor(self, blueprint: ActorBlueprint, transform: Transform, attach_to: Actor | None = None, attachment: AttachmentType = Rigid) -> Actor:
 		"""
 		The method will create, return and spawn an actor into the world. The actor will need an available blueprint to be created and a transform (location and rotation). It can also be attached to a parent with a certain attachment type.
 

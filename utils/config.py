@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, List, Optional, Tuple, Union
 
@@ -6,52 +6,64 @@ import yaml
 
 
 @dataclass
+class LidarConfigs:
+    upper_fov: float = 5.
+    lower_fov: float = -30.
+    rotation_frequency: float = 20.
+    max_range: float = 20.
+    num_theta_bin: int = 80
+    dropoff_general_rate: float = .1
+    dropoff_intensity_limit: float = .2
+    dropoff_zero_intensity: float = .2
+    points_per_second: float = 120_000
+
+
+@dataclass
 class ExperimentConfigs:
     """Arguments for running env.py."""
 
-    vision_size: int
-    """Size of the vision sensor"""
+    vision_size: int = 224
+    """Size of the vision sensor."""
 
-    vision_fov: int
-    """Field of view of the vision sensor"""
+    vision_fov: int = 90
+    """Field of view of the vision sensor."""
 
-    weather: bool
-    frame_skip: int
-    multiagent: bool
-    lane: int
-    lights: bool
-    mode: str
+    weather: bool = False
+    frame_skip: int = 1
 
-    num_routes: int
-    """Number of routes to use"""
+    multiagent: bool = False
+    """Whether to use multi-agent."""
 
-    routes: List[Tuple[int, int]]
+    num_vehicles: int = 0
+    """Number of vehicles. Only used when multiagent is True."""
+
+    lane: int = 0
+    lights: bool = False
+    mode: str = "ours"
+
+    num_routes: int = 0
+    """Number of routes to use."""
+
+    routes: List[Tuple[int, int]] = field(default_factory=list)
     """List of routes to use"""
 
-    vehicle_type: str
+    vehicle_type: str = "audi.a2"
     """Type of vehicle to use. Example: audi.a2"""
 
-    random_route: bool
-    """Whether to use random route"""
+    random_route: bool = False
+    """Whether to use random route."""
 
-    max_steps: int
-    """Maximum number of steps per episode"""
+    max_steps: int = 3000
+    """Maximum number of steps per episode."""
 
-    carla_ip: Optional[str]
-    """IP address of the carla server"""
+    carla_ip: str = "localhost"
+    """IP address of the carla server."""
 
-    data_path: Optional[Path]
-    """Path to the data directory to save the episode data and logs"""
+    data_path: Optional[Path] = None
+    """Path to the data directory to save the episode data and logs."""
 
-    upper_fov: float
-    lower_fov: float
-    rotation_frequency: float
-    max_range: float
-    num_theta_bin: int
-    dropoff_general_rate: float
-    dropoff_intensity_limit: float
-    dropoff_zero_intensity: float
-    points_per_second: float
+    lidar: LidarConfigs = field(default_factory=LidarConfigs)
+    """Lidar configurations."""
 
 
 def check_route_list(routes: Any) -> List[Tuple[int, int]]:
@@ -123,9 +135,15 @@ def parse_config(filename: Union[str, Path]):
 
         # Check if the config is valid
         if "carla_ip" in config:
-            config["carla_ip"] = check_is_ip(config["carla_ip"])
+            if config["carla_ip"] is None:
+                config["carla_ip"] = "localhost"
+            else:
+                config["carla_ip"] = check_is_ip(config["carla_ip"])
         if "data_path" in config and config["data_path"] is not None:
             config["data_path"] = Path(config["data_path"])
         if "routes" in config:
             config["routes"] = check_route_list(config["routes"])
+
+        config["lidar"] = LidarConfigs(**config["lidar"])
+
         return ExperimentConfigs(**config)

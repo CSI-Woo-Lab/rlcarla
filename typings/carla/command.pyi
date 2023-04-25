@@ -25,6 +25,10 @@ class Response:
 		...
 
 
+class FutureActor:
+	...
+
+
 
 class SpawnActor:
 	"""
@@ -56,7 +60,7 @@ class SpawnActor:
 		...
 
 	@overload
-	def __init__(self, blueprint: carla.ActorBlueprint, transform: carla.Transform, parent: str):
+	def __init__(self, blueprint: carla.ActorBlueprint, transform: carla.Transform, parent: carla.Actor | int):
 		"""
 
 
@@ -68,7 +72,7 @@ class SpawnActor:
 		"""
 		...
 
-	def then(self, command: str):
+	def then(self, command: Any):
 		"""
 		Links another command to be executed right after. It allows to ease very common flows such as spawning a set of vehicles by command and then using this method to set them to autopilot automatically.
 
@@ -391,7 +395,7 @@ class SetAutopilot:
 	port: np.uint16
 	"""Port of the Traffic Manager where the vehicle is to be registered or unlisted."""
 
-	def __init__(self, actor: str, enabled: bool, port: np.uint16 = 8000):
+	def __init__(self, actor: type | str, enabled: bool, port: np.uint16 | int = 8000):
 		"""
 
 
