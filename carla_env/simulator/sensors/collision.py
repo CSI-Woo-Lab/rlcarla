@@ -70,6 +70,11 @@ class CollisionSensor(Sensor):
         self.__collided = False
         self.__collision_history.clear()
 
+    @override
+    def destroy(self) -> None:
+        self.reset()
+        super().destroy()
+
     @property
     def has_collided(self) -> bool:
         """Whether the ego vehicle collided with other vehicles or obstacles."""
