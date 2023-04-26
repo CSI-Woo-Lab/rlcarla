@@ -4,6 +4,7 @@ import carla
 
 from agents.navigation.global_route_planner_dao import GlobalRoutePlannerDAO
 from carla_env.simulator.route_selector import RouteSelector
+from carla_env.simulator.vehicles.vehicle import Vehicle
 from carla_env.simulator.world import World
 from utils.config import ExperimentConfigs
 from utils.route_planner import CustomGlobalRoutePlanner
@@ -104,6 +105,13 @@ class RouteManager:
         self.__initial_transform, self.__target_transform = self.__route_selector.next()
         self.__waypoints = self.__get_wayoints(
             self.initial_transform, self.target_transform
+        )
+
+    def compute_direction_velocities(
+        self, vehicle: Vehicle, target_location: carla.Location
+    ):
+        return self.__route_planner.compute_direction_velocities(
+            vehicle.location, vehicle.velocity, target_location
         )
 
     @property
