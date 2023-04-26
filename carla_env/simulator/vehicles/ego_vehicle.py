@@ -20,7 +20,7 @@ class EgoVehicle(Vehicle):
 
         self.__lidar_sensor = LidarSensor(simulator, config)
         self.__camera = CameraSensor(simulator, config)
-        self.__collision_sensor = CollisionSensor(simulator, config)
+        self.__collision_sensor = CollisionSensor(simulator)
 
     def spawn(self, initial_transform: Optional[carla.Transform] = None):
         if initial_transform is None:
@@ -43,6 +43,21 @@ class EgoVehicle(Vehicle):
         self.__camera.destroy()
         self.__collision_sensor.destroy()
         super().destroy()
+
+    @property
+    def lidar_sensor(self) -> LidarSensor:
+        """Lidar sensor of the ego vehicle."""
+        return self.__lidar_sensor
+
+    @property
+    def camera(self) -> CameraSensor:
+        """Camera sensor of the ego vehicle."""
+        return self.__camera
+    
+    @property
+    def collision_sensor(self) -> CollisionSensor:
+        """Collision sensor of the ego vehicle."""
+        return self.__collision_sensor
 
     @property
     def vehicle_type(self):
