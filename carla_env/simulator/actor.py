@@ -1,7 +1,8 @@
-from typing import (Callable, Generic, List, Optional, TypeVar, Union, cast,
-                    overload)
+from typing import (Callable, Generic, List, Optional, Type, TypeVar, Union,
+                    cast, overload)
 
 import carla
+from typing_extensions import TypeGuard
 
 from carla_env.simulator.client import Client
 from carla_env.simulator.command import CarlaCommand
@@ -11,10 +12,11 @@ from utils.logger import Logging
 
 logger = Logging.get_logger(__name__)
 
-T = TypeVar("T", bound=carla.Actor, covariant=True)
+T_co = TypeVar("T_co", bound=carla.Actor, covariant=True)
+U = TypeVar("U", bound=carla.Actor)
 
 
-class Actor(Generic[T]):
+class Actor(Generic[T_co]):
     @overload
     def __init__(self, simulator: Simulator, blueprint: str):
         ...
@@ -32,9 +34,20 @@ class Actor(Generic[T]):
         else:
             self.__blueprint = blueprint
 
-        self.__actor: Optional[T] = None
+        self.__actor: Optional[T_co] = None
         self.__on_create_callbacks: List[Callable[["Actor"], None]] = []
         self.__on_destroy_callbacks: List[Callable[["Actor"], None]] = []
+
+    @classmethod
+    def from_carla(cls, simulator: Simulator, actor):
+        """Create an actor from a carla actor object."""
+        blueprint = simulator.world.blueprint_library.find(actor.type_id)
+        new = cls(simulator, blueprint)
+        new.__actor = actor
+        return new
+
+    def isinstance(self, _type: Type[U]) -> TypeGuard["Actor[U]"]:
+        return isinstance(self.actor, _type)
 
     def spawn(self, transform: carla.Transform, attach_to: Optional["Actor"] = None):
         if attach_to:
@@ -46,7 +59,7 @@ class Actor(Generic[T]):
         self.client.enqueue_command(cmd, self._on_spawn)
 
     def _on_spawn(self, response: carla.command.Response) -> None:
-        self.__actor = cast(T, self.world.get_actor(response.actor_id))
+        self.__actor = cast(T_co, self.world.get_actor(response.actor_id))
         for callback in self.__on_create_callbacks:
             callback(self)
         logger.debug("Spawn %s", self.__actor)
@@ -71,7 +84,7 @@ class Actor(Generic[T]):
         return self.simulator.world
 
     @property
-    def actor(self) -> T:
+    def actor(self) -> T_co:
         """The base carla actor object of the simulator."""
         if self.__actor is None:
             raise RuntimeError("The actor is not spawned yet.")
