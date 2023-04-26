@@ -1,4 +1,3 @@
-from enum import auto
 from typing import Optional
 
 import carla
@@ -28,3 +27,6 @@ class Vehicle(Actor[carla.Vehicle]):
             )
 
         self.simulator.client.enqueue_command(cmd, self._on_spawn)
+
+    def apply_control(self, control: carla.VehicleControl):
+        self.actor.apply_control(control)
