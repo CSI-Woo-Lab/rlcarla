@@ -3,6 +3,7 @@ from typing import Callable, List, Optional
 import carla
 
 from carla_env.simulator.command import CarlaCommand
+from carla_env.simulator.simulator import Simulator
 from carla_env.simulator.traffic_manager import TrafficManager
 from carla_env.simulator.world import World
 
@@ -17,8 +18,9 @@ class Client(carla.Client):
         
     """
 
-    def __init__(self, host: str, port: int) -> None:
+    def __init__(self, simulator: Simulator, host: str, port: int) -> None:
         super().__init__(host, port)
+        self.__simulator = simulator
         self.__command_queue: List[CarlaCommand] = []
         self.__callback_queue: List[
             Optional[Callable[[carla.command.Response], None]]
@@ -46,7 +48,7 @@ class Client(carla.Client):
             self.__callback_queue.clear()
 
     def get_world(self) -> World:
-        return World(super().get_world())
+        return World(super().get_world(), self.__simulator)
 
     def get_trafficmanager(self, client_connection: int = 8000) -> TrafficManager:
         return TrafficManager(super().get_trafficmanager(client_connection))

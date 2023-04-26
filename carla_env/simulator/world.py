@@ -1,6 +1,10 @@
+from typing import Iterable, List, Optional
+
 import carla
 from typing_extensions import override
 
+from carla_env.simulator.actor import Actor
+from carla_env.simulator.simulator import Simulator
 from carla_env.simulator.spectator import Spectator
 from carla_env.simulator.vehicles.vehicle import Vehicle
 from utils.logger import Logging
@@ -16,10 +20,11 @@ class World(carla.World):
 
     """
 
-    def __new__(cls, world: carla.World) -> carla.World:
+    def __new__(cls, world: carla.World, simulator: Simulator) -> carla.World:
         return world
 
-    def __init__(self, world: carla.World) -> None:
+    def __init__(self, world: carla.World, simulator: Simulator) -> None:
+        self.__simulator = simulator
         self.__world = world
         self.__map = world.get_map()
         self.__weather = world.get_weather()
@@ -40,6 +45,30 @@ class World(carla.World):
     @override
     def get_spectator(self) -> Spectator:
         return Spectator(super().get_spectator())
+
+    def get_vehicles(self) -> List[Vehicle]:
+        return [
+            Vehicle.from_carla(self.__simulator, vehicle)
+            for vehicle in self.__world.get_actors().filter("*vehicle*")
+        ]
+
+    def get_traffic_lights(self) -> List[Actor[carla.TrafficLight]]:
+        return [
+            Actor.from_carla(self.__simulator, traffic_light)
+            for traffic_light in self.__world.get_actors().filter("*traffic_light*")
+        ]
+
+    def get_actor(self, actor_id: int) -> Actor:
+        return Actor.from_carla(self.__simulator, super().get_actor(actor_id))
+
+    def get_actors(self, actor_ids: Optional[Iterable[int]] = None) -> List[Actor]:
+        if actor_ids:
+            actors = super().get_actors(list(actor_ids))
+        else:
+            actors = super().get_actors()
+        return [
+            Actor.from_carla(self.__simulator, actor) for actor in actors
+        ]
 
     @property
     def map(self):

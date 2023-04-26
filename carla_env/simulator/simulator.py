@@ -16,7 +16,7 @@ class Simulator:
     """
 
     def __init__(self, config: ExperimentConfigs):
-        self.__client = Client(config.carla_ip, 2000 - config.num_routes * 5)
+        self.__client = Client(self, config.carla_ip, 2000 - config.num_routes * 5)
         self.__world = self.__client.get_world()
 
         self.__route_manager = RouteManager(world=self.__world, config=config)
@@ -53,6 +53,11 @@ class Simulator:
     def world(self):
         """The world of the simulator."""
         return self.__world
+
+    @property
+    def route_manager(self):
+        """The route manager of the simulator."""
+        return self.__route_manager
 
     @property
     def ego_vehicle(self):
