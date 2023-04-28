@@ -34,22 +34,18 @@ class AutoVehicle(Vehicle):
         def __default__get_initial_transform() -> carla.Transform:
             return random.choice(spawn_points)
 
-        vehicle = None
-        while not vehicle:
-            if simulator.world.map.name == "Town04":
-                initial_transform = __town04__get_initial_transform()
-            else:
-                initial_transform = __default__get_initial_transform()
+        if simulator.world.map.name == "Town04":
+            initial_transform = __town04__get_initial_transform()
+        else:
+            initial_transform = __default__get_initial_transform()
 
-            vehicle = await super().spawn(
-                simulator,
-                blueprint,
-                initial_transform,
-                autopilot=True,
-                **kwargs,
-            )
-
-        return vehicle
+        return await super().spawn(
+            simulator,
+            blueprint,
+            initial_transform,
+            autopilot=True,
+            **kwargs,
+        )
 
     @staticmethod
     def __blueprint_filter(blueprint: carla.ActorBlueprint) -> bool:

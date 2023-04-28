@@ -49,6 +49,8 @@ class Client(carla.Client):
             commands.append(self.__command_queue.get())
             callbacks.append(self.__callback_queue.get())
 
+        print(f"Applying {len(commands)} commands...")
+
         for res, callback in zip(self.apply_batch_sync(commands), callbacks):
             if callback is not None:
                 callback(res)

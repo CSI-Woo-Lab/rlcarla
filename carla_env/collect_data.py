@@ -8,6 +8,7 @@ python PythonAPI/carla/agents/navigation/data_collection_agent.py \
 
 import datetime
 import random
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -52,6 +53,8 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
 
         record_path = self.record_dir / "record"
         record_path.mkdir(parents=True, exist_ok=True)
+
+        self.__average_time = 0.0
 
     def __create_record_dirpath(self, base_dir: Optional[Path] = None):
         """Create a directory path to save the collected data.
@@ -168,9 +171,16 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
             )
 
         # Advance the simulation and wait for the data.
+        t = time.time()
         _, lidar_sensor = self.sync_mode.tick(timeout=10.0)
+        self.__average_time = (self.__average_time * self.count + (time.time() - t)) / (
+            self.count + 1
+        )
+
         lidar_bin = generate_lidar_bin(
-            lidar_sensor, self.config.lidar.num_theta_bin, self.config.lidar.max_range
+            lidar_sensor,
+            self.config.lidar.num_theta_bin,
+            self.config.lidar.max_range,
         )
         self.count += 1
 
@@ -196,7 +206,7 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
             **{f"reward_{key}": value for key, value in reward_dict.items()},
             **{f"done_{key}": value for key, value in done_dict.items()},
             "control_repeat": self.config.frame_skip,
-            "weather": self.weather,
+            "weather": self.config.weather,
             "settings_map": self.sim.world.map.name,
             "settings_multiagent": self.config.multiagent,
             "traffic_lights_color": "UNLABELED",
@@ -211,6 +221,7 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
             logger.info("Target: %s", next_obs["target_location"])
             logger.info("Reward: %s (%s)", reward, reward_dict)
             logger.info("Done: %s (%s)", done, done_dict)
+            print("Average tick fps: ", 1 / self.__average_time)
 
         if done_dict["reached_max_steps"]:
             logger.warning("Episode reached max steps. Terminating episode.")
@@ -240,10 +251,8 @@ def collect_data(config: ExperimentConfigs):
 
     curr_steps = 0
     # for weather in weather_list:
-    weather = "ClearNoon"
-    env.weather = "ClearNoon"
 
-    record_dirname_per_weather = env.record_dir / "record" / weather
+    record_dirname_per_weather = env.record_dir / "record" / config.weather
     record_dirname_per_weather.mkdir(parents=True, exist_ok=True)
 
     total_step = 0

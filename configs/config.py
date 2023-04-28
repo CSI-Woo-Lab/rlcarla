@@ -68,7 +68,7 @@ class ExperimentConfigs:
     lidar: LidarConfigs = field(default_factory=LidarConfigs)
     """Lidar configurations."""
 
-    fps = 30
+    fps: int = 30
     """FPS of the simulator."""
 
 

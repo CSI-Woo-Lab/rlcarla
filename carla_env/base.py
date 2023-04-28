@@ -53,7 +53,6 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
         self.config = config
 
         self.sim = Simulator(config)
-        self.sim.run()
 
         #  dataset
         self.data_path = config.data_path
@@ -61,15 +60,23 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
         ## Collision detection
         self._proximity_threshold = 10.0
         self._traffic_light_threshold = 5.0
-        self.actor_list = self.sim.world.get_actors()
-        for idx, actor in enumerate(self.actor_list):
-            print(idx, actor)
 
+        self.reset_simulator()
+
+        #  sync mode
+        self.sync_mode = CarlaSyncMode(
+            self.sim.world, self.sim.ego_vehicle.lidar_sensor, fps=20
+        )
+
+        self.actor_list = self.sim.world.get_actors()
         self.vehicle_list = self.sim.world.get_vehicles()
         self.lights_list = self.sim.world.get_traffic_lights()
 
-    def reset(self):
+    def reset_simulator(self):
         asyncio.run(self.sim.reset())
+
+    def reset(self):
+        self.reset_simulator()
 
         # self.weather.tick()
         self.agent = RoamingAgent(
@@ -79,11 +86,6 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
         # pylint: disable=protected-access
         self.agent._local_planner.set_global_plan(
             self.sim.route_manager.waypoints
-        )
-
-        #  sync mode
-        self.sync_mode = CarlaSyncMode(
-            self.sim.world, self.sim.ego_vehicle.lidar_sensor, fps=20
         )
 
         self.count = 0
@@ -274,16 +276,8 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
         raise NotImplementedError
 
     def finish(self):
-        print("destroying actors.")
-        for actor in self.actor_list:
-            del actor
-        if self.sim.auto_vehicles is not None:
-            print("\ndestroying %d vehicles" % len(self.sim.auto_vehicles))
-            for vehicle in self.sim.auto_vehicles:
-                del vehicle
-        time.sleep(0.5)
+        asyncio.run(self.sim.finish())
         pygame.quit()
-        print("done.")
 
     def get_dataset(self) -> List[Dataset]:
         if self.data_path is None or not self.data_path.exists():

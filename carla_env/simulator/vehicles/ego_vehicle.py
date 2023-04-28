@@ -70,7 +70,7 @@ class EgoVehicle(Vehicle):
         vehicle.velocity = carla.Vector3D(x=.0, y=.0, z=.0)
         vehicle.angular_velocity = carla.Vector3D(x=.0, y=.0, z=.0)
 
-        simulator.world.get_spectator().follow(vehicle, Spectator.FollowMode.INSIDE)
+        simulator.world.get_spectator().follow(vehicle, Spectator.FollowMode.ABOVE)
 
         return vehicle
 

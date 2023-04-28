@@ -1,11 +1,17 @@
 import asyncio
 import time
-from threading import Thread
+from threading import Event, Thread
 from typing import List, Optional
 
 import carla
 
 from configs.config import ExperimentConfigs
+
+
+def tick(world, fps, event):
+    while not event.is_set():
+        world.tick()
+        time.sleep(1 / fps)
 
 
 class Simulator:
@@ -43,40 +49,50 @@ class Simulator:
         from carla_env.simulator.vehicles.auto_vehicle import AutoVehicle
         from carla_env.simulator.vehicles.ego_vehicle import EgoVehicle
 
-        if self.__ego_vehicle:
-            await self.__ego_vehicle.destroy()
+        event = Event()
+        tick_thread = Thread(target=tick, args=(self.__world, self.__fps, event))
+        tick_thread.start()
 
-        self.__ego_vehicle = None
-        while not self.__ego_vehicle:
-            self.__route_manager.select_route()
+        # Destroy the auto vehicles.
+        if self.__auto_vehicles:
+            await asyncio.gather(*(
+                auto_vehicle.destroy()
+                for auto_vehicle in self.__auto_vehicles
+            ))
+
+        # Spawn the ego vehicle.
+        self.__route_manager.select_route()
+        if not self.__ego_vehicle:
             self.__ego_vehicle = await EgoVehicle.spawn(
                 simulator=self,
                 config=self.__config,
                 initial_transform=self.route_manager.initial_transform,
             )
+        else:
+            self.__ego_vehicle.stop()
+            self.__ego_vehicle.transform = self.route_manager.initial_transform
 
+        # Spawn the auto vehicles.
         if self.is_multi_agent:
-            if self.__auto_vehicles:
-                await asyncio.gather(*(
-                    auto_vehicle.destroy()
-                    for auto_vehicle in self.__auto_vehicles
-                ))
-
             self.__auto_vehicles = await asyncio.gather(*(
                 AutoVehicle.spawn(simulator=self)
                 for _ in range(self.__num_auto_vehicles)
             ))
-        else:
-            self.__auto_vehicles = None
 
-    def run(self):
-        """Run the simulator."""
-        def tick():
-            while True:
-                self.world.tick()
-                time.sleep(1 / self.fps)
+        event.set()
+        tick_thread.join()
 
-        Thread(target=tick).start()
+    async def finish(self):
+        """Finish the simulator."""
+        if self.__ego_vehicle and self.__ego_vehicle.is_alive:
+            await self.__ego_vehicle.destroy()
+
+        if self.__auto_vehicles:
+            await asyncio.gather(*(
+                auto_vehicle.destroy()
+                for auto_vehicle in self.__auto_vehicles
+                if auto_vehicle.is_alive
+            ))
 
     @property
     def client(self):

@@ -51,7 +51,10 @@ class Actor(Generic[T], CarlaWrapper[T]):
                 logger.error(msg)
                 actor.append(None)
             else:
-                spawned = cast(T, simulator.world.carla.get_actor(response.actor_id))
+                spawned = cast(
+                    Optional[T],
+                    simulator.world.carla.get_actor(response.actor_id)
+                )
                 logger.info("Spawn %s", spawned)
                 actor.append(spawned)
 
@@ -62,6 +65,8 @@ class Actor(Generic[T], CarlaWrapper[T]):
 
         while not actor:
             await asyncio.sleep(0.01)
+        if not actor[0]:
+            logger.error("Failed to spawn %s: Cannot found new actor", blueprint)
         return actor[0]
 
     @staticmethod

@@ -50,6 +50,10 @@ class Vehicle(Actor[carla.Vehicle]):
     def apply_control(self, control: carla.VehicleControl):
         self.carla.apply_control(control)
 
+    def stop(self):
+        self.velocity = carla.Vector3D(0, 0, 0)
+        self.angular_velocity = carla.Vector3D(0, 0, 0)
+
     @property
     def velocity(self) -> carla.Vector3D:
         return super().velocity
