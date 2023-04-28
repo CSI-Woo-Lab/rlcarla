@@ -65,6 +65,9 @@ class ExperimentConfigs:
     lidar: LidarConfigs = field(default_factory=LidarConfigs)
     """Lidar configurations."""
 
+    fps = 30
+    """FPS of the simulator."""
+
 
 def check_route_list(routes: Any) -> List[Tuple[int, int]]:
     """Check if the route list is valid.
@@ -144,6 +147,9 @@ def parse_config(filename: Union[str, Path]):
         if "routes" in config:
             config["routes"] = check_route_list(config["routes"])
 
-        config["lidar"] = LidarConfigs(**config["lidar"])
+        if "lidar" in config:
+            config["lidar"] = LidarConfigs(**config["lidar"])
+        else:
+            config["lidar"] = LidarConfigs()
 
         return ExperimentConfigs(**config)

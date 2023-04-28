@@ -3,21 +3,19 @@ from enum import Enum
 import carla
 
 from carla_env.simulator.actor import Actor
+from carla_env.simulator.carla_wrapper import CarlaWrapper
 
 
-class Spectator(carla.Actor):
+class Spectator(CarlaWrapper[carla.Actor]):
     class FollowMode(Enum):
         BEHIND = 0
         ABOVE = 1
         INSIDE = 2
 
-    def __new__(cls, actor: carla.Actor):
-        return actor
-
     def follow(
         self, actor: Actor, mode: FollowMode = FollowMode.ABOVE, cascade: bool = True
     ):
-        world = self.get_world()
+        world = self.carla.get_world()
 
         if mode == Spectator.FollowMode.BEHIND:
             def transform():
@@ -37,7 +35,7 @@ class Spectator(carla.Actor):
                     actor.transform.location + carla.Location(z=5),
                     carla.Rotation(pitch=-5),
                 )
-        callback_id = world.on_tick(lambda _: self.set_transform(transform()))
+        callback_id = world.on_tick(lambda _: self.carla.set_transform(transform()))
 
         if cascade:
-            actor.on_destroy(lambda _: world.remove_on_tick(callback_id))
+            actor.on_destroy(lambda: world.remove_on_tick(callback_id))

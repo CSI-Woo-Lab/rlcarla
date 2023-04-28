@@ -1,6 +1,6 @@
 import math
 from dataclasses import dataclass
-from typing import List, Set, cast
+from typing import List, cast
 
 import carla
 from typing_extensions import override
@@ -25,29 +25,34 @@ class CollisionEvent:
 
 
 class CollisionSensor(Sensor):
-    def __init__(self, simulator: Simulator, max_queue: int = 4000):
-        blueprint_library = simulator.world.get_blueprint_library()
-        blueprint = blueprint_library.find("sensor.other.collision")
-        super().__init__(simulator=simulator, blueprint=blueprint)
-
+    def init(self, max_queue: int = 4000):
         self.__collided = False
         self.__collision_history: List[CollisionEvent] = []
         self.__max_queue = max_queue
 
-    @override
-    def spawn(self, parent: Actor):
-        super().spawn(
-            transform=carla.Transform(
-                carla.Location(x=2.5, y=0.7, z=0.0),
-                carla.Rotation(pitch=0.0, yaw=0.0, roll=0.0),
-            ),
-            parent=parent,
-        )
+        self.listen(self._callback__on_collision)
 
+    @classmethod
     @override
-    def _on_spawn(self, response: carla.command.Response) -> None:
-        super()._on_spawn(response)
-        self.actor.listen(self._callback__on_collision)
+    async def spawn(
+        cls,
+        simulator: Simulator,
+        parent: Actor,
+        max_queue: int = 4000,
+    ):
+        blueprint_library = simulator.world.blueprint_library
+        blueprint = blueprint_library.find("sensor.other.collision")
+        
+        sensor = await super().spawn(
+            simulator=simulator,
+            blueprint=blueprint,
+            attach_to=parent,
+        )
+        if not sensor:
+            return None
+
+        sensor.init(max_queue=max_queue)
+        return sensor
 
     def _callback__on_collision(self, data: carla.SensorData):
         event = cast(carla.CollisionEvent, data)
@@ -69,11 +74,6 @@ class CollisionSensor(Sensor):
     def reset(self) -> None:
         self.__collided = False
         self.__collision_history.clear()
-
-    @override
-    def destroy(self) -> None:
-        self.reset()
-        super().destroy()
 
     @property
     def has_collided(self) -> bool:

@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import carla
 
@@ -34,9 +34,8 @@ class RouteManager:
         sampling_resolution: float = 0.1,
     ):
         self.__world = world
-        self.__map = self.__world.map
         self.__sampling_resolution = sampling_resolution
-        self.__dao = GlobalRoutePlannerDAO(map, sampling_resolution)
+        self.__dao = GlobalRoutePlannerDAO(self.map, sampling_resolution)
 
         self.__route_planner = CustomGlobalRoutePlanner(self.__dao)
         self.__route_planner.setup()
@@ -44,7 +43,7 @@ class RouteManager:
         self.__route_selector = RouteSelector(
             self.__world, config.routes, config.random_route
         )
-        if self.__map.name == "Town04":
+        if self.map.name == "Town04":
             self.__get_wayoints = self.__town04__get_waypoints
         else:
             self.__get_wayoints = self.__default_get_waypoints
@@ -122,7 +121,7 @@ class RouteManager:
     @property
     def map(self):
         """The map of the simulator."""
-        return self.__map
+        return self.world.map
     
     @property
     def sampling_resolution(self):

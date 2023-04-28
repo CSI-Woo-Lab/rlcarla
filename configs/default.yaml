@@ -4,6 +4,7 @@ weather: false
 frame_skip: 1
 max_steps: 3000
 multiagent: false
+num_vehicles: 0
 lane: 0
 lights: false
 num_routes: 0
@@ -13,12 +14,13 @@ routes: []
 random_route: false
 carla_ip: localhost
 data_path: null
-upper_fov: 5.0
-lower_fov: -30.0
-rotation_frequency: 20.0
-max_range: 20.0
-num_theta_bin: 80
-dropoff_general_rate: 0.1
-dropoff_intensity_limit: 0.2
-dropoff_zero_intensity: 0.2
-points_per_second: 120_000
+lidar:
+  upper_fov: 5.0
+  lower_fov: -30.0
+  rotation_frequency: 20.0
+  max_range: 20.0
+  num_theta_bin: 80
+  dropoff_general_rate: 0.1
+  dropoff_intensity_limit: 0.2
+  dropoff_zero_intensity: 0.2
+  points_per_second: 120_000

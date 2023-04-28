@@ -1,8 +1,10 @@
 import queue
-from typing import List, Tuple
+from typing import List, Union
 
 import carla
-from typing_extensions import Unpack
+
+from carla_env.simulator.sensors.sensor import Sensor
+from carla_env.simulator.world import World
 
 
 class CarlaSyncMode:
@@ -16,12 +18,15 @@ class CarlaSyncMode:
 
     """
 
-    def __init__(self, world: carla.World, *sensors: carla.Sensor, fps: float = 20):
+    def __init__(self, world: World, *sensors: Sensor, fps: float = 20):
         self.world = world
         self.sensors = sensors
         self.frame = None
         self.delta_seconds = 1.0 / fps
-        self._queues: List[queue.Queue] = []
+        self._queues: List[Union[
+            queue.Queue[carla.WorldSnapshot],
+            queue.Queue[carla.SensorData],
+        ]] = []
         self._settings = None
 
         self.start()
@@ -47,9 +52,7 @@ class CarlaSyncMode:
 
     def tick(self, timeout: float):
         self.frame = self.world.tick()
-        data: Tuple[
-            carla.WorldSnapshot, Unpack[Tuple[carla.SensorData, ...]]
-        ] = tuple(self._retrieve_data(q, timeout) for q in self._queues)
+        data = [self._retrieve_data(q, timeout) for q in self._queues]
         assert all(x.frame == self.frame for x in data)
         return data
 
@@ -57,7 +60,13 @@ class CarlaSyncMode:
         if self._settings is not None:
             self.world.apply_settings(self._settings)
 
-    def _retrieve_data(self, sensor_queue: queue.Queue, timeout: float):
+    def _retrieve_data(
+        self,
+        sensor_queue: Union[
+            "queue.Queue[carla.WorldSnapshot]", "queue.Queue[carla.SensorData]"
+        ],
+        timeout: float,
+    ):
         while True:
             data = sensor_queue.get(timeout=timeout)
             if data.frame == self.frame:

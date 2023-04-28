@@ -1,18 +1,17 @@
-from typing import Iterable, List, Optional
+import asyncio
+from threading import Thread
+from typing import Callable, Iterable, Optional
 
 import carla
-from typing_extensions import override
 
-from carla_env.simulator.actor import Actor
+from carla_env.simulator.carla_wrapper import CarlaWrapper
 from carla_env.simulator.simulator import Simulator
-from carla_env.simulator.spectator import Spectator
-from carla_env.simulator.vehicles.vehicle import Vehicle
 from utils.logger import Logging
 
 logger = Logging.get_logger(__name__)
 
 
-class World(carla.World):
+class World(CarlaWrapper[carla.World]):
     """The world of the simulator. This class is a wrapper of the carla.World class.
     
     Args:
@@ -20,21 +19,16 @@ class World(carla.World):
 
     """
 
-    def __new__(cls, world: carla.World, simulator: Simulator) -> carla.World:
-        return world
+    def __init__(self, world: carla.World, simulator: Simulator):
+        super().__init__(world)
 
-    def __init__(self, world: carla.World, simulator: Simulator) -> None:
         self.__simulator = simulator
-        self.__world = world
-        self.__map = world.get_map()
-        self.__weather = world.get_weather()
-        self.__blueprint_library = world.get_blueprint_library()
 
-        self.__world.tick()
+        self.carla.tick()
         self.__removing_old_actors()
 
     def __removing_old_actors(self):
-        actors = self.__world.get_actors()
+        actors = self.carla.get_actors()
         for vehicle in actors.filter("*vehicle*"):
             logger.warn(f"Destroying old vehicle {vehicle.id}.")
             vehicle.destroy()
@@ -42,45 +36,84 @@ class World(carla.World):
             logger.warn(f"Destroying old sensor {sensor.id}.")
             sensor.destroy()
 
-    @override
-    def get_spectator(self) -> Spectator:
-        return Spectator(super().get_spectator())
+    def get_spectator(self):
+        from carla_env.simulator.spectator import Spectator
 
-    def get_vehicles(self) -> List[Vehicle]:
+        return Spectator(self.carla.get_spectator())
+
+    def get_vehicles(self):
+        from carla_env.simulator.vehicles.vehicle import Vehicle
+
         return [
-            Vehicle.from_carla(self.__simulator, vehicle)
-            for vehicle in self.__world.get_actors().filter("*vehicle*")
+            Vehicle(self.__simulator, vehicle)
+            for vehicle in self.carla.get_actors().filter("*vehicle*")
+            if isinstance(vehicle, carla.Vehicle)
         ]
 
-    def get_traffic_lights(self) -> List[Actor[carla.TrafficLight]]:
+    def get_traffic_lights(self):
+        from carla_env.simulator.actor import Actor
+
         return [
-            Actor.from_carla(self.__simulator, traffic_light)
-            for traffic_light in self.__world.get_actors().filter("*traffic_light*")
+            Actor(self.__simulator, traffic_light)
+            for traffic_light in self.carla.get_actors().filter("*traffic_light*")
+            if isinstance(traffic_light, carla.TrafficLight)
         ]
 
-    def get_actor(self, actor_id: int) -> Actor:
-        return Actor.from_carla(self.__simulator, super().get_actor(actor_id))
+    def get_actor(self, actor_id: int):
+        from carla_env.simulator.actor import Actor
 
-    def get_actors(self, actor_ids: Optional[Iterable[int]] = None) -> List[Actor]:
+        return Actor(self.__simulator, self.carla.get_actor(actor_id))
+
+    def get_actors(self, actor_ids: Optional[Iterable[int]] = None):
+        from carla_env.simulator.actor import Actor
+
         if actor_ids:
-            actors = super().get_actors(list(actor_ids))
+            actors = self.carla.get_actors(list(actor_ids))
         else:
-            actors = super().get_actors()
+            actors = self.carla.get_actors()
         return [
-            Actor.from_carla(self.__simulator, actor) for actor in actors
+            Actor(self.__simulator, actor) for actor in actors
         ]
+
+    def tick(self, timeout: float = 10.0):
+        """Tick the world."""
+        return self.carla.tick(timeout)
+
+    def wait_for_tick(self, timeout: float = 10.0):
+        return self.carla.wait_for_tick(timeout)
+
+    def on_tick(self, callback: Callable[[carla.WorldSnapshot], None]):
+        """Register a callback to be called every tick."""
+        return self.carla.on_tick(callback)
+
+    def remove_on_tick(self, callback: Callable[[carla.WorldSnapshot], None]):
+        """Remove a callback from being called every tick."""
+        self.carla.remove_on_tick(callback)
+
+    def get_settings(self):
+        """Get the settings of the world."""
+        return self.carla.get_settings()
+
+    def apply_settings(self, settings: carla.WorldSettings):
+        """Apply the settings to the world."""
+        self.carla.apply_settings(settings)
 
     @property
     def map(self):
         """The map of the world."""
-        return self.__map
+        return self.carla.get_map()
 
     @property
     def weather(self):
         """The weather of the world."""
-        return self.__weather
+        return self.carla.get_weather()
+
+    @weather.setter
+    def weather(self, weather: carla.WeatherParameters):
+        """The weather of the world."""
+        return self.carla.set_weather(weather)
 
     @property
     def blueprint_library(self):
         """The blueprint library of the world."""
-        return self.__blueprint_library
+        return self.carla.get_blueprint_library()

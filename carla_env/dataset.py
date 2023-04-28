@@ -11,7 +11,6 @@ from typing_extensions import TypedDict
 class Observations(TypedDict):
     sensor: np.ndarray
     image: np.ndarray
-    task: np.ndarray
 
 
 class Dataset(TypedDict):

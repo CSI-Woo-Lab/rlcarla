@@ -1,3 +1,4 @@
+from queue import Queue
 from typing import Callable, List, Optional
 
 import carla
@@ -21,10 +22,10 @@ class Client(carla.Client):
     def __init__(self, simulator: Simulator, host: str, port: int) -> None:
         super().__init__(host, port)
         self.__simulator = simulator
-        self.__command_queue: List[CarlaCommand] = []
-        self.__callback_queue: List[
+        self.__command_queue: Queue[CarlaCommand] = Queue()
+        self.__callback_queue: Queue[
             Optional[Callable[[carla.command.Response], None]]
-        ] = []
+        ] = Queue()
 
         self.set_timeout(10.)
         self.world.on_tick(self.__apply_commands)
@@ -34,18 +35,23 @@ class Client(carla.Client):
         command: CarlaCommand,
         callback: Optional[Callable[[carla.command.Response], None]] = None
     ) -> None:
-        self.__command_queue.append(command)
-        self.__callback_queue.append(callback)
+        self.__command_queue.put(command)
+        self.__callback_queue.put(callback)
 
     def __apply_commands(self, _):
-        if len(self.__command_queue) > 0:
-            for res, callback in zip(
-                self.apply_batch_sync(self.__command_queue), self.__callback_queue
-            ):
-                if callback is not None:
-                    callback(res)
-            self.__command_queue.clear()
-            self.__callback_queue.clear()
+        if self.__command_queue.empty():
+            return
+
+        commands: List[CarlaCommand] = []
+        callbacks: List[Optional[Callable[[carla.command.Response], None]]] = []
+
+        while not self.__command_queue.empty():
+            commands.append(self.__command_queue.get())
+            callbacks.append(self.__callback_queue.get())
+
+        for res, callback in zip(self.apply_batch_sync(commands), callbacks):
+            if callback is not None:
+                callback(res)
 
     def get_world(self) -> World:
         return World(super().get_world(), self.__simulator)

@@ -11,32 +11,36 @@ from utils.config import ExperimentConfigs
 
 
 class CameraSensor(Sensor):
-    def __init__(self, simulator: Simulator, config: ExperimentConfigs):
-        blueprint = simulator.world.get_blueprint_library().find("sensor.camera.rgb")
-        blueprint.set_attribute("image_size_x", str(config.vision_size))
-        blueprint.set_attribute("image_size_y", str(config.vision_size))
-        blueprint.set_attribute("fov", str(config.vision_fov))
-        super().__init__(simulator, blueprint)
-
+    def init(self, config: ExperimentConfigs):
         self.__vision_size = config.vision_size
-        self.__fov = config.vision_fov
         self.__image = np.zeros(
             (self.__vision_size, self.__vision_size), dtype=np.uint8
         )
+        self.listen(self._callback__on_image)
 
+    @classmethod
     @override
-    def spawn(self, parent: Actor):
-        super().spawn(
-            transform=carla.Transform(
-                carla.Location(x=1.5, y=0.0, z=0.0),
-                carla.Rotation(pitch=0.0, yaw=0.0, roll=0.0),
-            ),
-            parent=parent,
+    async def spawn(
+        cls,
+        simulator: Simulator,
+        config: ExperimentConfigs,
+        parent: Actor,
+    ):
+        blueprint = simulator.world.blueprint_library.find("sensor.camera.rgb")
+        blueprint.set_attribute("image_size_x", str(config.vision_size))
+        blueprint.set_attribute("image_size_y", str(config.vision_size))
+        blueprint.set_attribute("fov", str(config.vision_fov))
+        
+        sensor = await super().spawn(
+            simulator=simulator,
+            blueprint=blueprint,
+            attach_to=parent,
         )
+        if not sensor:
+            return None
 
-    def _on_spawn(self, response: carla.command.Response) -> None:
-        super()._on_spawn(response)
-        self.actor.listen(self._callback__on_image)
+        sensor.init(config)
+        return sensor
 
     def _callback__on_image(self, data: carla.SensorData):
         image: np.ndarray = np.frombuffer(

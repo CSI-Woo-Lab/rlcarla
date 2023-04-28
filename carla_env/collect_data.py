@@ -7,8 +7,9 @@ python PythonAPI/carla/agents/navigation/data_collection_agent.py \
 """
 
 import datetime
+import random
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple
 
 import carla
 import flax
@@ -17,7 +18,6 @@ from dotmap import DotMap
 
 from carla_env.base import BaseCarlaEnvironment
 from carla_env.dataset import Dataset, dump_dataset
-from carla_env.weathers import WEATHERS
 from utils.config import ExperimentConfigs
 from utils.lidar import generate_lidar_bin
 from utils.logger import Logging
@@ -30,40 +30,7 @@ Params = flax.core.FrozenDict[str, Any]
 class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
     """Carla environment for data collection."""
 
-    def _init(self):
-        self.lidar_sensor = self.world.try_spawn_actor(
-            self.lidar_obj,
-            carla.Transform(carla.Location(x=1.6, z=1.7), carla.Rotation(yaw=0.0)),
-            attach_to=self.vehicle,
-        )
-        self.record_dir = self.__create_record_dirpath(self.record_dir)
-
-        record_path = self.record_dir / "record"
-        record_path.mkdir(parents=True, exist_ok=True)
-
-        camera_bp  = self.world.get_blueprint_library().find("sensor.camera.rgb")
-        camera_bp.set_attribute("image_size_x", f"{self.vision_size}")
-        camera_bp.set_attribute("image_size_y", f"{self.vision_size}")
-        camera_bp.set_attribute("fov", f"{self.vision_fov}")
-
-        spawn_point = carla.Transform(
-            carla.Location(1.5, 0.0, 0.0),
-            carla.Rotation(0.0, 0.0, 0.0),
-        )
-        self.camera_sensor = cast(carla.Sensor, self.world.try_spawn_actor(
-            camera_bp, spawn_point, attach_to=self.vehicle
-        ))
-
-        def process_image(image: carla.Image):
-            """Process image from camera sensor and save it to self.image."""
-            image_data = np.frombuffer(image.raw_data, dtype=np.uint8)
-            image_data = image_data.reshape((image.height, image.width, 4))
-            image_data = image_data[:, :, :3]
-            image_data = np.fliplr(image_data)
-            self.image = image_data
-
-        self.camera_sensor.listen(process_image)    # type: ignore
-
+    def __init__(self, config: ExperimentConfigs):
         # dummy variables, to match deep mind control's APIs
         low = -1.0
         high = 1.0
@@ -79,12 +46,12 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
             low=low, high=high, size=self.action_space.shape[0]  # type: ignore
         ).astype(np.float32)
 
-        # roaming carla agent
-        self.world.tick()
+        super().__init__(config)
 
-    def reset_init(self):
-        self.image = np.zeros((self.vision_size, self.vision_size, 3))
-        return super().reset_init()
+        self.record_dir = self.__create_record_dirpath(config.data_path)
+
+        record_path = self.record_dir / "record"
+        record_path.mkdir(parents=True, exist_ok=True)
 
     def __create_record_dirpath(self, base_dir: Optional[Path] = None):
         """Create a directory path to save the collected data.
@@ -106,23 +73,23 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
                 x for x in
                 [
                     "carla",
-                    self.map.name.lower().split("/")[-1],
-                    f"{self.vision_size}x{self.vision_size}",
-                    f"fov{self.vision_fov}",
-                    f"{self.frame_skip}" if self.frame_skip > 1 else "",
-                    "multiagent" if self.multiagent else "",
-                    "lights" if self.follow_traffic_lights else "",
-                    f"{self.max_episode_steps // 1000}k",
+                    self.sim.world.map.name.lower().split("/")[-1],
+                    f"{self.config.vision_size}x{self.config.vision_size}",
+                    f"fov{self.config.vision_fov}",
+                    f"{self.config.frame_skip}" if self.config.frame_skip > 1 else "",
+                    "multiagent" if self.config.multiagent else "",
+                    "lights" if self.config.lights else "",
+                    f"{self.config.max_steps // 1000}k",
                     now.strftime("%Y-%m-%d-%H-%M-%S"),
                 ]
                 if x
             )
         )
 
-    def goal_reaching_reward(self, vehicle: carla.Vehicle):
-        total_reward, reward_dict, done_dict = super().goal_reaching_reward(vehicle)
+    def goal_reaching_reward(self):
+        total_reward, reward_dict, done_dict = super().goal_reaching_reward()
 
-        dist = self.get_distance_vehicle_target(vehicle)
+        dist = self.get_distance_vehicle_target()
 
         reward_dict = {
             "dist": dist,
@@ -158,7 +125,7 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
         """
         rewards: List[np.ndarray] = []
         next_obs, done, info = None, None, None
-        for _ in range(self.frame_skip):  # default 1
+        for _ in range(self.config.frame_skip):  # default 1
             next_obs, reward, done, info = self._simulator_step(
                 action, traffic_light_color
             )
@@ -192,32 +159,34 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
                 manual_gear_shift=False,
                 gear=0,
             )
-            self.vehicle.apply_control(vehicle_control)
+            self.sim.ego_vehicle.apply_control(vehicle_control)
 
         if self.count == 0:
             logger.info(
                 "Vehicle starts at: %s",
-                to_array(self.vehicle.get_location()),
+                to_array(self.sim.ego_vehicle.location),
             )
 
         # Advance the simulation and wait for the data.
         _, lidar_sensor = self.sync_mode.tick(timeout=10.0)
-        lidar_bin = generate_lidar_bin(lidar_sensor, self.num_theta_bin, self.range)
+        lidar_bin = generate_lidar_bin(
+            lidar_sensor, self.config.lidar.num_theta_bin, self.config.lidar.max_range
+        )
         self.count += 1
 
-        reward, reward_dict, done_dict = self.goal_reaching_reward(self.vehicle)
+        reward, reward_dict, done_dict = self.goal_reaching_reward()
 
-        rotation = self.vehicle.get_transform().rotation
+        rotation = self.sim.ego_vehicle.rotation
         next_obs = {
             "lidar": np.array(lidar_bin),
             "control": np.array([throttle, steer, brake]),
-            "acceleration": to_array(self.vehicle.get_acceleration()),
-            "angular_veolcity": to_array(self.vehicle.get_angular_velocity()),
-            "location": to_array(self.vehicle.get_location()),
+            "acceleration": to_array(self.sim.ego_vehicle.acceleration),
+            "angular_veolcity": to_array(self.sim.ego_vehicle.angular_velocity),
+            "location": to_array(self.sim.ego_vehicle.location),
             "rotation": to_array(rotation),
             "forward_vector": to_array(rotation.get_forward_vector()),
-            "veolcity": to_array(self.vehicle.get_velocity()),
-            "target_location": to_array(self.target_location),
+            "veolcity": to_array(self.sim.ego_vehicle.velocity),
+            "target_location": to_array(self.sim.target_location),
         }
         next_obs_sensor = np.hstack(
             [value for key, value in next_obs.items() if key != "image"]
@@ -226,10 +195,10 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
         info = {
             **{f"reward_{key}": value for key, value in reward_dict.items()},
             **{f"done_{key}": value for key, value in done_dict.items()},
-            "control_repeat": self.frame_skip,
+            "control_repeat": self.config.frame_skip,
             "weather": self.weather,
-            "settings_map": self.map.name,
-            "settings_multiagent": self.multiagent,
+            "settings_map": self.sim.world.map.name,
+            "settings_multiagent": self.config.multiagent,
             "traffic_lights_color": "UNLABELED",
             "reward": reward,
         }
@@ -247,7 +216,7 @@ class DataCollectingCarlaEnvironment(BaseCarlaEnvironment):
             logger.warning("Episode reached max steps. Terminating episode.")
 
         return (
-            {"sensor": next_obs_sensor, "image": self.image},
+            {"sensor": next_obs_sensor, "image": self.sim.ego_vehicle.camera.image},
             reward,
             done,
             info,
@@ -267,13 +236,7 @@ def collect_data(config: ExperimentConfigs):
         print("Please pass your carla IP address")
         return
 
-    env = DataCollectingCarlaEnvironment(
-        config=config,
-        image_model=None,
-        weather=WEATHERS[0],
-        carla_ip=config.carla_ip,
-        carla_port=2000 - config.num_routes * 5,
-    )
+    env = DataCollectingCarlaEnvironment(config)
 
     curr_steps = 0
     # for weather in weather_list:
@@ -288,7 +251,6 @@ def collect_data(config: ExperimentConfigs):
         curr_steps = 0
         observations_sensor: List[np.ndarray] = []
         observations_image: List[np.ndarray] = []
-        observations_task: List[np.ndarray] = []
         actions: List[np.ndarray] = []
         rewards: List[np.ndarray] = []
         terminals: List[bool] = []
@@ -296,20 +258,17 @@ def collect_data(config: ExperimentConfigs):
 
         logger.info("EPISODE: %s (%s/1,000,000)", j, format(total_step, ","))
 
-        env.reset_init()
         env.reset()
         done = False
         while not done:
             curr_steps += 1
             action, _ = env.compute_action()
+            # action.steer = random.random() * 2 - 1
             next_obs, reward, done, info = env.step(action)
-            task = np.zeros(12)
-            task[env.route] = 1
 
             action = np.array([action.throttle, action.steer, action.brake])
             observations_sensor.append(next_obs["sensor"].copy())
             observations_image.append(next_obs["image"].copy())
-            observations_task.append(task)
             actions.append(action.copy())
             rewards.append(reward)
             terminals.append(done)
@@ -325,13 +284,12 @@ def collect_data(config: ExperimentConfigs):
             "observations": {
                 "sensor": np.array(observations_sensor),
                 "image": np.array(observations_image),
-                "task": np.array(observations_task),
             },
             "actions": np.array(actions),
             "rewards": np.array(rewards),
             "terminals": np.array(terminals),
             "infos": infos,
-            "lidar_bin": config.num_theta_bin,
+            "lidar_bin": config.lidar.num_theta_bin,
         }
 
         if infos[-1]["done_dist_done"]:

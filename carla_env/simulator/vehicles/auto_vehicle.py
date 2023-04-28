@@ -2,6 +2,7 @@ import random
 
 import carla
 import numpy as np
+from typing_extensions import override
 
 from carla_env.simulator.simulator import Simulator
 from carla_env.simulator.vehicles.vehicle import Vehicle
@@ -10,42 +11,57 @@ from carla_env.simulator.vehicles.vehicle import Vehicle
 class AutoVehicle(Vehicle):
     _LANE_ID_CANDIDATES = [-1, -2, -3, -4]
 
-    def __init__(self, simulator: Simulator):
-        super().__init__(simulator=simulator, blueprint=self.__get_blueprint())
+    @classmethod
+    @override
+    async def spawn(
+        cls,
+        simulator: Simulator,
+        **kwargs,
+    ):
+        blueprint = cls.__get_blueprint(simulator)
+        spawn_points = simulator.world.map.get_spawn_points()
 
-        self.__spawn_points = self.world.map.get_spawn_points()
+        def __town04__get_initial_transform() -> carla.Transform:
+            road_id = 47
+            road_length = 117.
+            initial_transform = simulator.world.map.get_waypoint_xodr(
+                road_id=road_id,
+                lane_id=random.choice(cls._LANE_ID_CANDIDATES),
+                s=np.random.random.uniform(road_length),
+            ).transform
+            return initial_transform
 
-        if self.world.map.name == "Town04":
-            self.__get_initial_transform = self.__town04__get_initial_transform
-        else:
-            self.__get_initial_transform = self.__default__get_initial_transform
+        def __default__get_initial_transform() -> carla.Transform:
+            return random.choice(spawn_points)
 
-    def spawn(self):
-        super().spawn(self.__get_initial_transform(), autopilot=True)
+        vehicle = None
+        while not vehicle:
+            if simulator.world.map.name == "Town04":
+                initial_transform = __town04__get_initial_transform()
+            else:
+                initial_transform = __default__get_initial_transform()
 
-    def __town04__get_initial_transform(self) -> carla.Transform:
-        road_id = 47
-        road_length = 117.
-        initial_transform = self.world.map.get_waypoint_xodr(
-            road_id=road_id,
-            lane_id=random.choice(self._LANE_ID_CANDIDATES),
-            s=np.random.random.uniform(road_length),
-        ).transform
-        return initial_transform
+            vehicle = await super().spawn(
+                simulator,
+                blueprint,
+                initial_transform,
+                autopilot=True,
+                **kwargs,
+            )
 
-    def __default__get_initial_transform(self) -> carla.Transform:
-        return random.choice(self.__spawn_points)
+        return vehicle
 
     @staticmethod
     def __blueprint_filter(blueprint: carla.ActorBlueprint) -> bool:
         """Filter the blueprints of the vehicles."""
         return int(blueprint.get_attribute("number_of_wheels")) == 4
 
-    def __get_blueprint(self) -> carla.ActorBlueprint:
+    @classmethod
+    def __get_blueprint(cls, simulator: Simulator) -> carla.ActorBlueprint:
         """Get a random blueprint of the vehicle."""
         blueprints = list(filter(
-            self.__blueprint_filter,
-            self.world.blueprint_library.filter("vehicle.*")
+            cls.__blueprint_filter,
+            simulator.world.blueprint_library.filter("vehicle.*")
         ))
         blueprint = random.choice(blueprints)
 

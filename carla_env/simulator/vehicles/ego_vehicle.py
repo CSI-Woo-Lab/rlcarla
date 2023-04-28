@@ -1,6 +1,8 @@
+import asyncio
 from typing import Optional
 
 import carla
+from typing_extensions import override
 
 from carla_env.simulator.sensors.camera import CameraSensor
 from carla_env.simulator.sensors.collision import CollisionSensor
@@ -12,41 +14,74 @@ from utils.config import ExperimentConfigs
 
 
 class EgoVehicle(Vehicle):
-    def __init__(self, simulator: Simulator, config: ExperimentConfigs):
-        super().__init__(
-            simulator=simulator, blueprint=f"vehicle.{config.vehicle_type}"
-        )
+    def init(
+        self,
+        config: ExperimentConfigs,
+        lidar_sensor: LidarSensor,
+        camera: CameraSensor,
+        collision_sensor: CollisionSensor,
+        lane_invasion_sensor: LaneInvasionSensor,
+    ):
         self.__vehicle_type = config.vehicle_type
-        self.blueprint.set_attribute("role_name", "ego")
+        self.__lidar_sensor = lidar_sensor
+        self.__camera = camera
+        self.__collision_sensor = collision_sensor
+        self.__lane_invasion_sensor = lane_invasion_sensor
 
-        self.__lidar_sensor = LidarSensor(simulator, config)
-        self.__camera = CameraSensor(simulator, config)
-        self.__collision_sensor = CollisionSensor(simulator)
-        self.__lane_invasion_sensor = LaneInvasionSensor(simulator)
+    @classmethod
+    async def spawn(
+        cls,
+        simulator: Simulator,
+        config: ExperimentConfigs,
+        initial_transform: Optional[carla.Transform] = None,
+    ):
+        blueprint = simulator.world.blueprint_library.find(
+            f"vehicle.{config.vehicle_type}"
+        )
+        blueprint.set_attribute("role_name", "ego")
 
-    def spawn(self, initial_transform: Optional[carla.Transform] = None):
-        if initial_transform is None:
-            initial_transform = carla.Transform(
-                carla.Location(x=.0, y=.0, z=.0), carla.Rotation(yaw=.0)
-            )
-        super().spawn(transform=initial_transform)
+        vehicle = await super().spawn(
+            simulator=simulator,
+            blueprint=blueprint,
+            transform=initial_transform,
+        )
 
-        self.__lidar_sensor.spawn(parent=self)
-        self.__camera.spawn(parent=self)
-        self.__collision_sensor.spawn(parent=self)
-        self.__lane_invasion_sensor.spawn(parent=self)
+        if not vehicle:
+            return None
 
-        self.velocity = carla.Vector3D(x=.0, y=.0, z=.0)
-        self.angular_velocity = carla.Vector3D(x=.0, y=.0, z=.0)
+        lidar_sensor, camera, collision_sensor, lane_invasion = await asyncio.gather(
+            LidarSensor.spawn(simulator, config, vehicle),
+            CameraSensor.spawn(simulator, config, vehicle),
+            CollisionSensor.spawn(simulator, vehicle),
+            LaneInvasionSensor.spawn(simulator, vehicle),
+        )
 
-        self.world.get_spectator().follow(self)
+        if (
+            lidar_sensor is None
+            or camera is None
+            or collision_sensor is None
+            or lane_invasion is None
+        ):
+            return None
 
-    def destroy(self) -> None:
-        self.__lidar_sensor.destroy()
-        self.__camera.destroy()
-        self.__collision_sensor.destroy()
-        self.__lane_invasion_sensor.destroy()
-        super().destroy()
+        vehicle.init(config, lidar_sensor, camera, collision_sensor, lane_invasion)
+
+        vehicle.velocity = carla.Vector3D(x=.0, y=.0, z=.0)
+        vehicle.angular_velocity = carla.Vector3D(x=.0, y=.0, z=.0)
+
+        simulator.world.get_spectator().follow(vehicle)
+
+        return vehicle
+
+    @override
+    async def destroy(self):
+        await asyncio.gather(
+            self.__lidar_sensor.destroy(),
+            self.__camera.destroy(),
+            self.__collision_sensor.destroy(),
+            self.__lane_invasion_sensor.destroy(),
+        )
+        await super().destroy()
 
     @property
     def lidar_sensor(self) -> LidarSensor:

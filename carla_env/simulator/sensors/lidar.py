@@ -1,3 +1,5 @@
+from typing import Optional
+
 import carla
 from typing_extensions import override
 
@@ -8,7 +10,7 @@ from utils.config import ExperimentConfigs
 
 
 class LidarSensor(Sensor):
-    def __init__(self, simulator: Simulator, config: ExperimentConfigs):
+    def init(self, config: ExperimentConfigs):
         self.__upper_fov = config.lidar.upper_fov
         self.__lower_fov = config.lidar.lower_fov
         self.__rotation_frequency = config.lidar.rotation_frequency
@@ -18,35 +20,48 @@ class LidarSensor(Sensor):
         self.__dropoff_zero_intensity = config.lidar.dropoff_zero_intensity
         self.__points_per_second = config.lidar.points_per_second
 
+    @classmethod
+    @override
+    async def spawn(
+        cls,
+        simulator: Simulator,
+        config: ExperimentConfigs,
+        parent: Actor,
+    ):
         blueprint = simulator.world.blueprint_library.find("sensor.lidar.ray_cast")
-        blueprint.set_attribute("upper_fov", str(self.__upper_fov))
-        blueprint.set_attribute("lower_fov", str(self.__lower_fov))
-        blueprint.set_attribute("rotation_frequency", str(self.__rotation_frequency))
-        blueprint.set_attribute("range", str(self.__max_range))
+        blueprint.set_attribute("upper_fov", str(config.lidar.upper_fov))
+        blueprint.set_attribute("lower_fov", str(config.lidar.lower_fov))
         blueprint.set_attribute(
-            "dropoff_general_rate", str(self.__dropoff_general_rate)
+            "rotation_frequency", str(config.lidar.rotation_frequency)
+        )
+        blueprint.set_attribute("range", str(config.lidar.max_range))
+        blueprint.set_attribute(
+            "dropoff_general_rate", str(config.lidar.dropoff_general_rate)
         )
         blueprint.set_attribute(
-            "dropoff_intensity_limit", str(self.__dropoff_intensity_limit)
+            "dropoff_intensity_limit", str(config.lidar.dropoff_intensity_limit)
         )
         blueprint.set_attribute(
-            "dropoff_zero_intensity", str(self.__dropoff_zero_intensity)
+            "dropoff_zero_intensity", str(config.lidar.dropoff_zero_intensity)
         )
-        blueprint.set_attribute("points_per_second", str(self.__points_per_second))
+        blueprint.set_attribute(
+            "points_per_second", str(config.lidar.points_per_second)
+        )
 
-        super().__init__(simulator=simulator, blueprint=blueprint)
+        sensor = await super().spawn(
+            simulator, blueprint, cls.__get_initial_transform(), parent
+        )
+        if not sensor:
+            return None
 
-    def __get_initial_transform(self):
+        sensor.init(config)
+        return sensor
+
+    @staticmethod
+    def __get_initial_transform():
         return carla.Transform(
             carla.Location(x=1.6, y=0., z=1.7),
             carla.Rotation(pitch=0., yaw=0., roll=0.)
-        )
-
-    @override
-    def spawn(self, parent: Actor):
-        return super().spawn(
-            transform=self.__get_initial_transform(),
-            parent=parent,
         )
 
     @property

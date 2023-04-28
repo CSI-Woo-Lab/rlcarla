@@ -9,28 +9,36 @@ from carla_env.simulator.simulator import Simulator
 
 
 class LaneInvasionSensor(Sensor):
-    def __init__(self, simulator: Simulator):
+    def init(self):
+        self.__lane_types: Set[carla.LaneMarkingType] = set()
+        self.listen(self._callback__on_invasion)
+
+    @classmethod
+    @override
+    async def spawn(
+        cls,
+        simulator: Simulator,
+        parent: Actor,
+    ):
         blueprint_library = simulator.world.blueprint_library
         blueprint = blueprint_library.find("sensor.other.lane_invasion")
-        super().__init__(simulator, blueprint)
+        
+        sensor = await super().spawn(
+            simulator, blueprint, attach_to=parent
+        )
+        if not sensor:
+            return None
 
-        self.__lane_types: Set[carla.LaneMarkingType] = set()
-
-    @override
-    def spawn(self, parent: Actor):
-        super().spawn(carla.Transform(
-            carla.Location(x=0.0, y=0.0, z=0.0),
-            carla.Rotation(pitch=0.0, yaw=0.0, roll=0.0)
-        ), parent)
-        self.listen(self._callback__on_invasion)
+        sensor.init()
+        return sensor
 
     def reset(self):
         self.__lane_types.clear()
 
     @override
-    def destroy(self) -> None:
+    async def destroy(self) -> None:
         self.reset()
-        super().destroy()
+        await super().destroy()
 
     def _callback__on_invasion(self, data: carla.SensorData):
         event = cast(carla.LaneInvasionEvent, data)
