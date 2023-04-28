@@ -28,8 +28,11 @@ class ExperimentConfigs:
     vision_fov: int = 90
     """Field of view of the vision sensor."""
 
-    weather: bool = False
+    weather: str = "ClearNoon"
+    """Weather to use. Example: ClearNoon"""
+
     frame_skip: int = 1
+    """Number of frames to skip."""
 
     multiagent: bool = False
     """Whether to use multi-agent."""

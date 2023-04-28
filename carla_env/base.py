@@ -58,8 +58,6 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
         #  dataset
         self.data_path = config.data_path
 
-        self.weather = WEATHERS[0]
-
         ## Collision detection
         self._proximity_threshold = 10.0
         self._traffic_light_threshold = 5.0
@@ -72,8 +70,6 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
 
     def reset(self):
         asyncio.run(self.sim.reset())
-
-        self.sim.world.weather = getattr(carla.WeatherParameters, self.weather)
 
         # self.weather.tick()
         self.agent = RoamingAgent(

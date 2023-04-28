@@ -26,7 +26,9 @@ class Simulator:
         self.__config = config
 
         self.__client = Client(self, config.carla_ip, 2000 - config.num_routes * 5)
+
         self.__world = self.__client.world
+        self.__world.weather = getattr(carla.WeatherParameters, config.weather)
 
         self.__route_manager = RouteManager(world=self.__world, config=config)
 
