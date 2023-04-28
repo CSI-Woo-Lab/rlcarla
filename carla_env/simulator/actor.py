@@ -55,7 +55,10 @@ class Actor(Generic[T], CarlaWrapper[T]):
                     Optional[T],
                     simulator.world.carla.get_actor(response.actor_id)
                 )
-                logger.info("Spawn %s", spawned)
+                if not spawned:
+                    logger.error("Failed to get actor %s", response.actor_id)
+                else:
+                    logger.info("Spawn %s", spawned)
                 actor.append(spawned)
 
         simulator.client.enqueue_command(
@@ -65,8 +68,6 @@ class Actor(Generic[T], CarlaWrapper[T]):
 
         while not actor:
             await asyncio.sleep(0.01)
-        if not actor[0]:
-            logger.error("Failed to spawn %s: Cannot found new actor", blueprint)
         return actor[0]
 
     @staticmethod
@@ -112,7 +113,7 @@ class Actor(Generic[T], CarlaWrapper[T]):
         self.__on_destroy_callbacks.append(callback)
 
     async def destroy(self):
-        if not self.is_alive or self.__destroyed:
+        if self.__destroyed or self.carla and not self.is_alive:
             return
 
         self.__destroyed = True
