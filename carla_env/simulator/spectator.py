@@ -1,3 +1,4 @@
+import math
 from enum import Enum
 
 import carla
@@ -17,11 +18,24 @@ class Spectator(CarlaWrapper[carla.Actor]):
     ):
         world = self.carla.get_world()
 
+        height = actor.carla.bounding_box.extent.z * 2
+
         if mode == Spectator.FollowMode.BEHIND:
+            pitch_rad = math.radians(10)
+            distance = actor.carla.bounding_box.extent.x * 5
+            distance_z = distance * math.sin(pitch_rad)
+            distance_xy = distance * math.cos(pitch_rad)
+
             def transform():
+                degree = math.radians(actor.transform.rotation.yaw)
+                delta = carla.Location(
+                    x=-distance_xy * math.cos(degree),
+                    y=-distance_xy * math.sin(degree),
+                    z=height + distance_z,
+                )
                 return carla.Transform(
-                    actor.transform.location + carla.Location(x=-50),
-                    carla.Rotation(pitch=-15),
+                    actor.transform.location + delta,
+                    carla.Rotation(pitch=-10, yaw=actor.transform.rotation.yaw),
                 )
         elif mode == Spectator.FollowMode.ABOVE:
             def transform():
@@ -30,9 +44,6 @@ class Spectator(CarlaWrapper[carla.Actor]):
                     carla.Rotation(pitch=-90),
                 )
         elif mode == Spectator.FollowMode.INSIDE:
-            # Get height of the actor
-            height = actor.carla.bounding_box.extent.z * 2
-
             def transform():
                 return carla.Transform(
                     actor.transform.location + carla.Location(z=height * 0.8),
