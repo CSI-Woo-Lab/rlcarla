@@ -10,7 +10,7 @@ from carla_env.simulator.sensors.lane_invasion import LaneInvasionSensor
 from carla_env.simulator.sensors.lidar import LidarSensor
 from carla_env.simulator.simulator import Simulator
 from carla_env.simulator.vehicles.vehicle import Vehicle
-from utils.config import ExperimentConfigs
+from configs.config import ExperimentConfigs
 
 
 class EgoVehicle(Vehicle):

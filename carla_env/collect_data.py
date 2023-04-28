@@ -18,7 +18,7 @@ from dotmap import DotMap
 
 from carla_env.base import BaseCarlaEnvironment
 from carla_env.dataset import Dataset, dump_dataset
-from utils.config import ExperimentConfigs
+from configs.config import ExperimentConfigs
 from utils.lidar import generate_lidar_bin
 from utils.logger import Logging
 from utils.vector import to_array

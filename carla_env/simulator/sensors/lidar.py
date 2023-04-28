@@ -6,7 +6,7 @@ from typing_extensions import override
 from carla_env.simulator.actor import Actor
 from carla_env.simulator.sensors.sensor import Sensor
 from carla_env.simulator.simulator import Simulator
-from utils.config import ExperimentConfigs
+from configs.config import ExperimentConfigs
 
 
 class LidarSensor(Sensor):

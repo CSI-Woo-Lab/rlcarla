@@ -5,7 +5,7 @@ from typing import List, Optional
 
 import carla
 
-from utils.config import ExperimentConfigs
+from configs.config import ExperimentConfigs
 
 
 class Simulator:

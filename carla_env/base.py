@@ -18,8 +18,8 @@ from carla_env.dataset import Dataset, load_datasets
 from carla_env.simulator.actor import Actor
 from carla_env.simulator.simulator import Simulator
 from carla_env.weathers import WEATHERS
+from configs.config import ExperimentConfigs
 from utils.carla_sync_mode import CarlaSyncMode
-from utils.config import ExperimentConfigs
 from utils.roaming_agent import RoamingAgent
 
 

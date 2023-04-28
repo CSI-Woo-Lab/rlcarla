@@ -11,7 +11,7 @@ from typing_extensions import Concatenate, ParamSpec
 
 from carla_env.behavior_cloning import behavior_cloning
 from carla_env.collect_data import collect_data
-from utils.config import parse_config
+from configs.config import parse_config
 from utils.logger import Logging
 
 P = ParamSpec("P")

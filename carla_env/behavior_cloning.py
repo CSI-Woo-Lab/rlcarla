@@ -11,9 +11,9 @@ import tqdm
 
 from carla_env.base import BaseCarlaEnvironment
 from carla_env.dataset import load_datasets
+from configs.config import ExperimentConfigs
 from offline_baselines_jax.bc.bc import BC
 from offline_baselines_jax.bc.policies import MultiInputPolicy
-from utils.config import ExperimentConfigs
 from utils.lidar import generate_lidar_bin
 from utils.vector import to_array
 
