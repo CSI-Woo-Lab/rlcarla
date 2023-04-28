@@ -9,6 +9,7 @@ from carla_env.simulator.sensors.collision import CollisionSensor
 from carla_env.simulator.sensors.lane_invasion import LaneInvasionSensor
 from carla_env.simulator.sensors.lidar import LidarSensor
 from carla_env.simulator.simulator import Simulator
+from carla_env.simulator.spectator import Spectator
 from carla_env.simulator.vehicles.vehicle import Vehicle
 from configs.config import ExperimentConfigs
 
@@ -69,7 +70,7 @@ class EgoVehicle(Vehicle):
         vehicle.velocity = carla.Vector3D(x=.0, y=.0, z=.0)
         vehicle.angular_velocity = carla.Vector3D(x=.0, y=.0, z=.0)
 
-        simulator.world.get_spectator().follow(vehicle)
+        simulator.world.get_spectator().follow(vehicle, Spectator.FollowMode.INSIDE)
 
         return vehicle
 

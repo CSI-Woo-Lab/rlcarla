@@ -30,10 +30,13 @@ class Spectator(CarlaWrapper[carla.Actor]):
                     carla.Rotation(pitch=-90),
                 )
         elif mode == Spectator.FollowMode.INSIDE:
+            # Get height of the actor
+            height = actor.carla.bounding_box.extent.z * 2
+
             def transform():
                 return carla.Transform(
-                    actor.transform.location + carla.Location(z=5),
-                    carla.Rotation(pitch=-5),
+                    actor.transform.location + carla.Location(z=height * 0.8),
+                    carla.Rotation(pitch=-5, yaw=actor.transform.rotation.yaw),
                 )
         callback_id = world.on_tick(lambda _: self.carla.set_transform(transform()))
 
