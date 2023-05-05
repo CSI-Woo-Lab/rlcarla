@@ -283,9 +283,11 @@ def collect_data(config: ExperimentConfigs):
             terminals.append(done)
             infos.append(info)
 
+        env.sim.ego_vehicle.stop()
+
         total_step += curr_steps
 
-        if total_step > 1_000_000:
+        if total_step > config.max_total_steps:
             logger.info("Finished collecting data")
             break
 

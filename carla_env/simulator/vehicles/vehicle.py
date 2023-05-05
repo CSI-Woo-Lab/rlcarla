@@ -47,12 +47,22 @@ class Vehicle(Actor[carla.Vehicle]):
             )
         return cmd
 
+    def get_contorl(self) -> carla.VehicleControl:
+        return self.carla.get_control()
+
+    def get_physic_control(self) -> carla.VehiclePhysicsControl:
+        return self.carla.get_physics_control()
+
     def apply_control(self, control: carla.VehicleControl):
         self.carla.apply_control(control)
+
+    def apply_physics_control(self, physics_control: carla.VehiclePhysicsControl):
+        self.carla.apply_physics_control(physics_control)
 
     def stop(self):
         self.velocity = carla.Vector3D(0, 0, 0)
         self.angular_velocity = carla.Vector3D(0, 0, 0)
+        self.apply_control(carla.VehicleControl())
 
     @property
     def velocity(self) -> carla.Vector3D:

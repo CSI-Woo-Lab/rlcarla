@@ -69,8 +69,8 @@ class Simulator:
                 initial_transform=self.route_manager.initial_transform,
             )
         else:
-            self.__ego_vehicle.stop()
             self.__ego_vehicle.transform = self.route_manager.initial_transform
+            self.__ego_vehicle.reset()
 
         # Spawn the auto vehicles.
         if self.is_multi_agent:

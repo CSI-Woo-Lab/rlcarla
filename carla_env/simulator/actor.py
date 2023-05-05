@@ -140,15 +140,6 @@ class Actor(Generic[T], CarlaWrapper[T]):
             await asyncio.sleep(0.01)
         return done[0]
 
-    def __del__(self):
-        if not self.__destroyed:
-            asyncio.run(self.destroy())
-            msg = f"WARNING: Actor {self.carla} is not destroyed before deletion"
-            try:
-                logger.warning(msg)
-            except NameError:
-                print(msg)
-
     @property
     def transform(self) -> carla.Transform:
         """The transform of the actor."""

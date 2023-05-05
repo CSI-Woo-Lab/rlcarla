@@ -101,6 +101,7 @@ class Logging(abc.ABC):
             ):
                 logger.removeHandler(handler)
 
+        cls.__filepath.parent.mkdir(parents=True, exist_ok=True)
         handler = logging.FileHandler(cls.__filepath)
         handler.setLevel(cls.__level)
 

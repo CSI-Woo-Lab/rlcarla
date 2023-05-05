@@ -108,33 +108,6 @@ class World(CarlaWrapper[carla.World]):
         """The weather of the world."""
         return self.carla.get_weather()
 
-    def set_weather(self, weather: carla.WeatherParameters):
-        """The weather of the world."""
-
-        # Update friction coefficients for road surfaces based on weather
-        wetness = weather.precipitation / 100.0
-
-        # You can use any value to scale the friction, based on the weather conditions
-        friction_scale = 1.0 - wetness
-
-        # Iterate through all map elements
-        for actor in self.get_actors():
-            # Check if the actor is a road or other drivable surface
-            if 'road' in actor.carla.type_id or 'sidewalk' in actor.carla.type_id:
-                # Get the current friction coefficient
-                friction = actor.carla.get_physics_control().wheels[0].tire_friction
-
-                # Update the friction coefficient based on the weather
-                new_friction = friction * friction_scale
-                physics_control = actor.carla.get_physics_control()
-                for wheel in physics_control.wheels:
-                    wheel.tire_friction = new_friction
-
-                # Apply the updated physics control to the actor
-                actor.carla.apply_physics_control(physics_control)
-
-        return self.carla.set_weather(weather)
-
     @weather.setter
     def weather(self, weather: carla.WeatherParameters):
         """The weather of the world."""

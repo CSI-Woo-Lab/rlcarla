@@ -34,7 +34,7 @@ class RouteSelector:
         self.__map = world.map
         self.__spawn_points = self.__map.get_spawn_points()
 
-        if route_candidates is None:
+        if not route_candidates:
             route_candidates = self._DEFAULT_ROUTE_CANDIDATES
         self.__route_list = route_candidates
         self.__current_route_idx = 0

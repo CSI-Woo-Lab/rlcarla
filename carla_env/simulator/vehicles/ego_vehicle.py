@@ -74,6 +74,10 @@ class EgoVehicle(Vehicle):
 
         return vehicle
 
+    def reset(self):
+        self.stop()
+        self.collision_sensor.reset()
+
     @override
     async def destroy(self):
         await asyncio.gather(
@@ -107,3 +111,10 @@ class EgoVehicle(Vehicle):
     @property
     def vehicle_type(self):
         return self.__vehicle_type
+
+    def apply_control(self, control: carla.VehicleControl):
+        wetness = self.simulator.world.weather.precipitation / 100.0
+        diff = wetness / 9.5
+        control.throttle = min(control.throttle + diff, 1.0)
+        control.brake = max(control.brake - diff, 0.0)
+        return super().apply_control(control)

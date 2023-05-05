@@ -14,7 +14,7 @@ class CameraSensor(Sensor):
     def init(self, config: ExperimentConfigs):
         self.__vision_size = config.vision_size
         self.__image = np.zeros(
-            (self.__vision_size, self.__vision_size), dtype=np.uint8
+            (self.__vision_size, self.__vision_size, 3), dtype=np.uint8
         )
         self.listen(self._callback__on_image)
 
@@ -30,10 +30,16 @@ class CameraSensor(Sensor):
         blueprint.set_attribute("image_size_x", str(config.vision_size))
         blueprint.set_attribute("image_size_y", str(config.vision_size))
         blueprint.set_attribute("fov", str(config.vision_fov))
+
+        parent_height = parent.carla.bounding_box.extent.z * 2
         
         sensor = await super().spawn(
             simulator=simulator,
             blueprint=blueprint,
+            transform=carla.Transform(
+                carla.Location(x=1.6, z=parent_height),
+                carla.Rotation(pitch=-15),
+            ),
             attach_to=parent,
         )
         if not sensor:
@@ -47,7 +53,7 @@ class CameraSensor(Sensor):
             cast(carla.Image, data).raw_data, dtype=np.uint8
         )
         image = image.reshape((self.__vision_size, self.__vision_size, 4))
-        image = image[:, :, 3]
+        image = image[:, :, :3]
         image = np.fliplr(image)
         self.__image[...] = image
 

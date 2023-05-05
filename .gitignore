@@ -172,3 +172,6 @@ log/
 # Playground
 playground.*
 playground/
+
+# Configs
+configs/*.yaml

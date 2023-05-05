@@ -59,6 +59,9 @@ class ExperimentConfigs:
     max_steps: int = 3000
     """Maximum number of steps per episode."""
 
+    max_total_steps: int = 1_000_000
+    """Maximum number of total steps."""
+
     carla_ip: str = "localhost"
     """IP address of the carla server."""
 

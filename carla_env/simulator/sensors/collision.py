@@ -1,5 +1,7 @@
 import math
+import time
 from dataclasses import dataclass
+from threading import Lock, Thread
 from typing import List, cast
 
 import carla
@@ -8,6 +10,9 @@ from typing_extensions import override
 from carla_env.simulator.actor import Actor
 from carla_env.simulator.sensors.sensor import Sensor
 from carla_env.simulator.simulator import Simulator
+from utils.logger import Logging
+
+logger = Logging.get_logger(__name__)
 
 
 @dataclass
@@ -29,6 +34,7 @@ class CollisionSensor(Sensor):
         self.__collided = False
         self.__collision_history: List[CollisionEvent] = []
         self.__max_queue = max_queue
+        self.__lock = Lock()
 
         self.listen(self._callback__on_collision)
 
@@ -55,14 +61,19 @@ class CollisionSensor(Sensor):
         return sensor
 
     def _callback__on_collision(self, data: carla.SensorData):
+        if self.__lock.locked():
+            return
+        self.__lock.acquire()
+
         event = cast(carla.CollisionEvent, data)
-        self.__collided = True
 
         if len(self.__collision_history) >= self.__max_queue:
             self.__collision_history.pop(0)
 
         impulse = event.normal_impulse
         intensity = math.sqrt(impulse.x ** 2 + impulse.y ** 2 + impulse.z ** 2)
+
+        self.__collided = True
         self.__collision_history.append(
             CollisionEvent(
                 actor_id=event.other_actor.id,
@@ -71,9 +82,22 @@ class CollisionSensor(Sensor):
             )
         )
 
+        self.__lock.release()
+
+    def __lock_release_after(self, seconds: float):
+        def release():
+            time.sleep(seconds)
+            self.__lock.release()
+
+        Thread(target=release).start()
+
     def reset(self) -> None:
+        while self.__lock.locked():
+            pass
+        self.__lock.acquire()
         self.__collided = False
         self.__collision_history.clear()
+        self.__lock_release_after(0.1)
 
     @property
     def has_collided(self) -> bool:
