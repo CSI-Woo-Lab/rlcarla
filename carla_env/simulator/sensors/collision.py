@@ -10,6 +10,7 @@ from typing_extensions import override
 from carla_env.simulator.actor import Actor
 from carla_env.simulator.sensors.sensor import Sensor
 from carla_env.simulator.simulator import Simulator
+from utils.lock import lock_release_after
 from utils.logger import Logging
 
 logger = Logging.get_logger(__name__)
@@ -84,20 +85,13 @@ class CollisionSensor(Sensor):
 
         self.__lock.release()
 
-    def __lock_release_after(self, seconds: float):
-        def release():
-            time.sleep(seconds)
-            self.__lock.release()
-
-        Thread(target=release).start()
-
     def reset(self) -> None:
         while self.__lock.locked():
             pass
         self.__lock.acquire()
         self.__collided = False
         self.__collision_history.clear()
-        self.__lock_release_after(0.1)
+        lock_release_after(self.__lock, 0.1)
 
     @property
     def has_collided(self) -> bool:

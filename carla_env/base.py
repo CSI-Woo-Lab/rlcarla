@@ -246,11 +246,21 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
         # print('[GoalReachReward] VehLoc: %s Target: %s Dist: %s VelF:%s' % (str(vehicle_location), str(target_location), str(dist), str(vel_forward)))
         # base_reward = -1.0 * (dist / 100.0) + 5.0
         base_reward = vel_forward
+
+        # Redifine base reward to be the L2 distance between the vehicle and the target
+        base_reward = self.get_distance_vehicle_target()
+
         _, traffic_light_reward = self._get_traffic_light_reward()
         collided_done, collision_reward = self._get_collision_reward()
         total_reward: np.ndarray = (
             base_reward + 100 * collision_reward
         )  # + 100 * traffic_light_reward + 100.0 * object_collided_reward
+
+        lane_invasion = self.sim.ego_vehicle.lane_invasion_sensor.lane_types
+        lane_done = (
+            carla.LaneMarkingType.Solid in lane_invasion
+            or carla.LaneMarkingType.SolidSolid in lane_invasion
+        )
 
         reward_dict = {
             "collision": collision_reward,
@@ -262,6 +272,7 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
 
         done_dict = {
             "collided_done": collided_done,
+            "lane_collided_done": lane_done,
             "traffic_light_done": False,
             "reached_max_steps": self.count >= self.config.max_steps,
         }

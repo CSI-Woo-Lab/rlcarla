@@ -77,6 +77,7 @@ class EgoVehicle(Vehicle):
     def reset(self):
         self.stop()
         self.collision_sensor.reset()
+        self.lane_invasion_sensor.reset()
 
     @override
     async def destroy(self):
