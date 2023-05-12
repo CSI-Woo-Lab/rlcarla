@@ -7,18 +7,18 @@ from carla_env.simulator.world import World
 
 class Client(carla.Client):
     """The client of the simulator. This class is a wrapper of the carla.Client class.
-    
+
     Args:
         host (str): The host of the simulator.
-        
+
         port (int): The port of the simulator.
-        
+
     """
 
     def __init__(self, simulator: Simulator, host: str, port: int) -> None:
         super().__init__(host, port)
         self.__world = World(self.get_world(), simulator)
-        self.set_timeout(10.)
+        self.set_timeout(10.0)
 
     def get_trafficmanager(self, client_connection: int = 8000) -> TrafficManager:
         return TrafficManager(super().get_trafficmanager(client_connection))

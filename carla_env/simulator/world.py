@@ -11,7 +11,7 @@ logger = Logging.get_logger(__name__)
 
 class World(CarlaWrapper[carla.World]):
     """The world of the simulator. This class is a wrapper of the carla.World class.
-    
+
     Args:
         world (carla.World): The world of the simulator.
 
@@ -28,10 +28,10 @@ class World(CarlaWrapper[carla.World]):
     def __removing_old_actors(self):
         actors = self.carla.get_actors()
         for vehicle in actors.filter("*vehicle*"):
-            logger.warn(f"Destroying old vehicle {vehicle.id}.")
+            logger.warning("Destroying old vehicle %s", vehicle.id)
             vehicle.destroy()
         for sensor in actors.filter("*sensor*"):
-            logger.warn(f"Destroying old sensor {sensor.id}.")
+            logger.warning("Destroying old sensor %s", sensor.id)
             sensor.destroy()
 
     def get_spectator(self):
@@ -74,9 +74,7 @@ class World(CarlaWrapper[carla.World]):
             actors = self.carla.get_actors(list(actor_ids))
         else:
             actors = self.carla.get_actors()
-        return [
-            Actor(self.__simulator, actor) for actor in actors
-        ]
+        return [Actor(self.__simulator, actor) for actor in actors]
 
     def tick(self, timeout: float = 10.0):
         """Tick the world."""

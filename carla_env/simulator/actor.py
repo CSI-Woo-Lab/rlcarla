@@ -14,7 +14,6 @@ T = TypeVar("T", bound=carla.Actor)
 
 class ActorInitializeError(Exception):
     """Raised when the actor failed to initialize."""
-    pass
 
 
 class Actor(Generic[T], CarlaWrapper[T]):
@@ -84,10 +83,10 @@ class Actor(Generic[T], CarlaWrapper[T]):
         self.__on_destroy_callbacks.append(callback)
 
     def before_destroy(self):
-        ...
+        pass
 
     def after_destroy(self):
-        ...
+        pass
 
     def destroy(self):
         if self.__destroyed or self.carla and not self.is_alive:
@@ -103,7 +102,7 @@ class Actor(Generic[T], CarlaWrapper[T]):
             logger.info("Destroy %s", actor_desc)
         else:
             logger.error("Failed to destroy %s", actor_desc)
-        
+
         for callback in self.__on_destroy_callbacks:
             callback()
 
@@ -131,7 +130,7 @@ class Actor(Generic[T], CarlaWrapper[T]):
     def rotation(self) -> carla.Rotation:
         """The rotation of the actor."""
         return self.transform.rotation
-    
+
     @rotation.setter
     def rotation(self, rotation: carla.Rotation) -> None:
         self.transform = carla.Transform(self.transform.location, rotation)
@@ -167,18 +166,18 @@ class Actor(Generic[T], CarlaWrapper[T]):
         """The distance to another actor."""
         if isinstance(other, carla.Location):
             return self.location.distance(other)
-        else:
-            return self.location.distance(other.location)
+        return self.location.distance(other.location)
 
-    def distance_2d(self, other: Union["Actor", carla.Transform, carla.Location]) -> float:
+    def distance_2d(
+        self, other: Union["Actor", carla.Transform, carla.Location]
+    ) -> float:
         """The distance to another actor."""
         if isinstance(other, carla.Location):
             return self.location.distance_2d(other)
-        else:
-            return self.location.distance_2d(other.location)
+        return self.location.distance_2d(other.location)
 
-    def isinstance(self, _type: Type[T]) -> TypeGuard["Actor[T]"]:
-        return isinstance(self.carla, _type)
+    def isinstance(self, actor_type: Type[T]) -> TypeGuard["Actor[T]"]:
+        return isinstance(self.carla, actor_type)
 
     @override
     def __repr__(self):

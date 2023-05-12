@@ -1,4 +1,3 @@
-
 import random
 from typing import List, Optional, Tuple
 
@@ -58,26 +57,23 @@ class RouteSelector:
         else:
             self.__get_next_route = self.__default__get_next_route
 
-    def __town04__get_next_route(
-        self, start_x: float = 5.
-    ) -> Tuple[carla.Transform, carla.Transform]:
+    @staticmethod
+    def __town04__get_next_route() -> Tuple[carla.Transform, carla.Transform]:
         initial_transform = carla.Transform(
-            carla.Location(x=start_x, y=.0, z=.1), carla.Rotation(yaw=90.)
+            carla.Location(x=0.0, y=0.0, z=0.1), carla.Rotation(yaw=90.0)
         )
         return initial_transform, initial_transform
 
     def __random__get_next_route(self) -> Tuple[carla.Transform, carla.Transform]:
         initial_transform = random.choice(self.__spawn_points)
-        goal_candidate = build_goal_candidate(
-            self.__world, initial_transform.location
-        )
+        goal_candidate = build_goal_candidate(self.__world, initial_transform.location)
         if not goal_candidate:
             goal_candidate = build_goal_candidate(
-                self.__world, initial_transform.location, threshold=100.
+                self.__world, initial_transform.location, threshold=100.0
             )
         target_transform = random.choice(goal_candidate)
         return initial_transform, target_transform
-    
+
     def __default__get_next_route(self) -> Tuple[carla.Transform, carla.Transform]:
         self.__current_route_idx += 1
         self.__current_route_idx %= len(self.__route_list)
@@ -86,7 +82,7 @@ class RouteSelector:
         initial_transform = self.__spawn_points[current_route[0]]
         target_transform = self.__spawn_points[current_route[1]]
         return initial_transform, target_transform
-    
+
     def next(self):
         return self.__get_next_route()
 

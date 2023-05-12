@@ -1,5 +1,4 @@
 import random
-from threading import Thread
 from typing import Dict, List, Optional, Tuple
 
 import carla
@@ -19,7 +18,7 @@ logger = Logging.get_logger(__name__)
 class Simulator(gym.Env[dict, np.ndarray]):
     """The simulator of the environment. This class is responsible for creating the
     client and the world of the simulator.
-    
+
     Args:
         config (ExperimentConfigs): The experiment configurations.
 
@@ -48,14 +47,16 @@ class Simulator(gym.Env[dict, np.ndarray]):
         self.__ego_vehicle: Optional[EgoVehicle] = None
 
         self.action_space = gym.spaces.Box(shape=(2,), low=-1, high=1)
-        self.observation_space = gym.spaces.Dict({
-            "sensor": gym.spaces.Box(
-                shape=(config.lidar.num_theta_bin + 24,), low=-1, high=1
-            ),
-            "image": gym.spaces.Box(
-                shape=(224, 224, 3), low=0, high=255, dtype=np.uint8
-            ),
-        })
+        self.observation_space = gym.spaces.Dict(
+            {
+                "sensor": gym.spaces.Box(
+                    shape=(config.lidar.num_theta_bin + 24,), low=-1, high=1
+                ),
+                "image": gym.spaces.Box(
+                    shape=(224, 224, 3), low=0, high=255, dtype=np.uint8
+                ),
+            }
+        )
 
     @override
     def reset(self):
@@ -156,7 +157,10 @@ class Simulator(gym.Env[dict, np.ndarray]):
             logger.info("Vehicle: %s", next_observation["location"])
             logger.info("Target: %s", next_observation["target_location"])
             logger.info("Reward: %s (%s)", reward, reward_dict)
-            logger.info("Done: %s (%s)", done, done_dict)
+            logger.info(
+                "Done: %s",
+                next(filter(lambda x: x[1], done_dict.items()))[0] if done else False,
+            )
 
         if done_dict["reached_max_steps"]:
             logger.warning("Episode reached max steps. Terminating episode.")
@@ -170,6 +174,10 @@ class Simulator(gym.Env[dict, np.ndarray]):
             done,
             info,
         )
+
+    @override
+    def render(self):
+        return super().render()
 
     def finish(self):
         """Finish the simulator."""

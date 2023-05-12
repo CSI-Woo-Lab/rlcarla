@@ -37,18 +37,23 @@ class Spectator(CarlaWrapper[carla.Actor]):
                     actor.transform.location + delta,
                     carla.Rotation(pitch=-10, yaw=actor.transform.rotation.yaw),
                 )
+
         elif mode == Spectator.FollowMode.ABOVE:
+
             def transform():
                 return carla.Transform(
                     actor.transform.location + carla.Location(z=50),
                     carla.Rotation(pitch=-90),
                 )
+
         elif mode == Spectator.FollowMode.INSIDE:
+
             def transform():
                 return carla.Transform(
                     actor.transform.location + carla.Location(z=height * 0.8),
                     carla.Rotation(pitch=-5, yaw=actor.transform.rotation.yaw),
                 )
+
         callback_id = world.on_tick(lambda _: self.carla.set_transform(transform()))
 
         if cascade:

@@ -13,7 +13,7 @@ from carla_env.utils.route_planner import CustomGlobalRoutePlanner
 class RouteManager:
     """Route Manager for Carla Simulator. This class is responsible for generating
     waypoints for the ego vehicle.
-    
+
     Args:
         world (World): Carla world.
 
@@ -52,19 +52,16 @@ class RouteManager:
         self.__target_transform: Optional[carla.Transform] = None
         self.__waypoints: List[carla.Waypoint] = []
 
-    def __town04__get_waypoints(
-        self,
-        initial_transform: carla.Transform,
-        target_transform: carla.Transform,
-    ) -> List[carla.Waypoint]:
+    @staticmethod
+    def __town04__get_waypoints(*_) -> List[carla.Waypoint]:
         """Get the waypoints of the route from the initial transform to the target
         transform.
-        
+
         Args:
             initial_transform (carla.Transform): The initial transform of the route.
 
             target_transform (carla.Transform): The target transform of the route.
-            
+
         Returns:
             List[carla.Waypoint]: The waypoints of the route.
 
@@ -78,12 +75,12 @@ class RouteManager:
     ) -> List[carla.Waypoint]:
         """Get the waypoints of the route from the initial transform to the target
         transform.
-        
+
         Args:
             initial_transform (carla.Transform): The initial transform of the route.
 
             target_transform (carla.Transform): The target transform of the route.
-            
+
         Returns:
             List[carla.Waypoint]: The waypoints of the route.
 
@@ -94,7 +91,7 @@ class RouteManager:
 
     def select_route(self):
         """Select a new route.
-        
+
         The selected route is stored in the following properties:
             - initial_transform
             - target_transform
@@ -122,7 +119,7 @@ class RouteManager:
     def map(self):
         """The map of the simulator."""
         return self.world.map
-    
+
     @property
     def sampling_resolution(self):
         """The sampling resolution of the simulator."""
@@ -132,14 +129,14 @@ class RouteManager:
     def waypoints(self):
         """The waypoints of the current route."""
         return self.__waypoints
-    
+
     @property
     def initial_transform(self):
         """The initial transform of the current route."""
         if self.__initial_transform is None:
             raise ValueError("No route is selected. Please call select_route() first.")
         return self.__initial_transform
-    
+
     @property
     def target_transform(self):
         """The target transform of the current route."""

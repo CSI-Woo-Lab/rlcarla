@@ -1,4 +1,4 @@
-from typing import Optional, cast
+from typing import cast
 
 import carla
 import numpy as np
@@ -11,6 +11,7 @@ from carla_env.utils.config import ExperimentConfigs
 
 
 class CameraSensor(Sensor[carla.Image]):
+    @override
     def init(self, config: ExperimentConfigs):
         self.__vision_size = config.vision_size
         self.__image = np.zeros(
@@ -32,7 +33,7 @@ class CameraSensor(Sensor[carla.Image]):
         blueprint.set_attribute("fov", str(config.vision_fov))
 
         parent_height = parent.carla.bounding_box.extent.z * 2
-        
+
         return super().spawn(
             config,
             simulator=simulator,

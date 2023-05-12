@@ -57,45 +57,45 @@ class LidarSensor(Sensor[carla.LidarMeasurement]):
     @staticmethod
     def __get_initial_transform():
         return carla.Transform(
-            carla.Location(x=1.6, y=0., z=1.7),
-            carla.Rotation(pitch=0., yaw=0., roll=0.)
+            carla.Location(x=1.6, y=0.0, z=1.7),
+            carla.Rotation(pitch=0.0, yaw=0.0, roll=0.0),
         )
 
     @property
     def upper_fov(self):
         """The upper field of view of the sensor."""
         return self.__upper_fov
-    
+
     @property
     def lower_fov(self):
         """The lower field of view of the sensor."""
         return self.__lower_fov
-    
+
     @property
     def rotation_frequency(self):
         """The rotation frequency of the sensor."""
         return self.__rotation_frequency
-    
+
     @property
     def max_range(self):
         """The maximum range of the sensor."""
         return self.__max_range
-    
+
     @property
     def dropoff_general_rate(self):
         """The dropoff general rate of the sensor."""
         return self.__dropoff_general_rate
-    
+
     @property
     def dropoff_intensity_limit(self):
         """The dropoff intensity limit of the sensor."""
         return self.__dropoff_intensity_limit
-    
+
     @property
     def dropoff_zero_intensity(self):
         """The dropoff zero intensity of the sensor."""
         return self.__dropoff_zero_intensity
-    
+
     @property
     def points_per_second(self):
         """The points per second of the sensor."""

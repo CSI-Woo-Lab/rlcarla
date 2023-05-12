@@ -43,12 +43,13 @@ class EgoVehicle(Vehicle):
         self.__collision_sensor = collision_sensor
         self.__lane_invasion_sensor = lane_invasion_sensor
 
-        self.velocity = carla.Vector3D(x=.0, y=.0, z=.0)
-        self.angular_velocity = carla.Vector3D(x=.0, y=.0, z=.0)
+        self.velocity = carla.Vector3D(x=0.0, y=0.0, z=0.0)
+        self.angular_velocity = carla.Vector3D(x=0.0, y=0.0, z=0.0)
 
         self.simulator.world.spectator.follow(self, Spectator.FollowMode.ABOVE)
 
     @classmethod
+    @override
     def spawn(
         cls,
         simulator: Simulator,
@@ -81,7 +82,7 @@ class EgoVehicle(Vehicle):
     def camera(self) -> CameraSensor:
         """Camera sensor of the ego vehicle."""
         return self.__camera
-    
+
     @property
     def collision_sensor(self) -> CollisionSensor:
         """Collision sensor of the ego vehicle."""

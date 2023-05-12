@@ -7,7 +7,7 @@ import fire
 import flax
 import flax.linen as nn
 from flax.struct import dataclass, field
-from typing_extensions import Concatenate, ParamSpec
+from typing_extensions import Concatenate, ParamSpec, override
 
 from carla_env.behavior_cloning import behavior_cloning
 from carla_env.collect_data import collect_data
@@ -22,8 +22,8 @@ Params = flax.core.FrozenDict[str, Any]
 @dataclass
 class Model(Generic[P, R]):
     step: int
-    apply_fn: Callable[Concatenate[Params, P], R] = field(pytree_node=False)
     params: Params
+    apply_fn: Callable[Concatenate[Params, P], R] = field(pytree_node=False)
 
     @classmethod
     def create(cls, model_def: nn.Module, params: Params) -> "Model":

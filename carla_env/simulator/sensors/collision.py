@@ -1,7 +1,6 @@
 import math
-import time
 from dataclasses import dataclass
-from threading import Lock, Thread
+from threading import Lock
 from typing import List, cast
 
 import carla
@@ -49,7 +48,7 @@ class CollisionSensor(Sensor[carla.CollisionEvent]):
     ):
         blueprint_library = simulator.world.blueprint_library
         blueprint = blueprint_library.find("sensor.other.collision")
-        
+
         return super().spawn(
             simulator=simulator,
             blueprint=blueprint,
@@ -68,7 +67,7 @@ class CollisionSensor(Sensor[carla.CollisionEvent]):
             self.__collision_history.pop(0)
 
         impulse = event.normal_impulse
-        intensity = math.sqrt(impulse.x ** 2 + impulse.y ** 2 + impulse.z ** 2)
+        intensity = math.sqrt(impulse.x**2 + impulse.y**2 + impulse.z**2)
 
         self.__collided = True
         self.__collision_history.append(

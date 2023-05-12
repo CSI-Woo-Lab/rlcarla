@@ -11,6 +11,7 @@ from carla_env.utils.lock import lock_release_after
 
 
 class LaneInvasionSensor(Sensor[carla.LaneInvasionEvent]):
+    @override
     def init(self):
         self.__lane_types: Set[carla.LaneMarkingType] = set()
         self.__lock = Lock()
@@ -26,7 +27,7 @@ class LaneInvasionSensor(Sensor[carla.LaneInvasionEvent]):
     ):
         blueprint_library = simulator.world.blueprint_library
         blueprint = blueprint_library.find("sensor.other.lane_invasion")
-        
+
         return super().spawn(
             simulator=simulator,
             blueprint=blueprint,
@@ -48,7 +49,7 @@ class LaneInvasionSensor(Sensor[carla.LaneInvasionEvent]):
     def _callback__on_invasion(self, data: carla.SensorData):
         if self.__lock.locked():
             return
-        
+
         self.__lock.acquire()
 
         event = cast(carla.LaneInvasionEvent, data)
