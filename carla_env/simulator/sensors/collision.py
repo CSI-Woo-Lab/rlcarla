@@ -10,8 +10,8 @@ from typing_extensions import override
 from carla_env.simulator.actor import Actor
 from carla_env.simulator.sensors.sensor import Sensor
 from carla_env.simulator.simulator import Simulator
-from utils.lock import lock_release_after
-from utils.logger import Logging
+from carla_env.utils.lock import lock_release_after
+from carla_env.utils.logger import Logging
 
 logger = Logging.get_logger(__name__)
 
@@ -30,7 +30,7 @@ class CollisionEvent:
     """The intensity of the collision."""
 
 
-class CollisionSensor(Sensor):
+class CollisionSensor(Sensor[carla.CollisionEvent]):
     def init(self, max_queue: int = 4000):
         self.__collided = False
         self.__collision_history: List[CollisionEvent] = []
@@ -41,7 +41,7 @@ class CollisionSensor(Sensor):
 
     @classmethod
     @override
-    async def spawn(
+    def spawn(
         cls,
         simulator: Simulator,
         parent: Actor,
@@ -50,16 +50,12 @@ class CollisionSensor(Sensor):
         blueprint_library = simulator.world.blueprint_library
         blueprint = blueprint_library.find("sensor.other.collision")
         
-        sensor = await super().spawn(
+        return super().spawn(
             simulator=simulator,
             blueprint=blueprint,
             attach_to=parent,
+            max_queue=max_queue,
         )
-        if not sensor:
-            return None
-
-        sensor.init(max_queue=max_queue)
-        return sensor
 
     def _callback__on_collision(self, data: carla.SensorData):
         if self.__lock.locked():

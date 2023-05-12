@@ -1,16 +1,20 @@
-import asyncio
-from typing import Callable, Generic, List, Optional, Type, TypeVar, cast
+from typing import Callable, Generic, List, Optional, Type, TypeVar, Union
 
 import carla
 from typing_extensions import TypeGuard, override
 
 from carla_env.simulator.carla_wrapper import CarlaWrapper
 from carla_env.simulator.simulator import Simulator
-from utils.logger import Logging
+from carla_env.utils.logger import Logging
 
 logger = Logging.get_logger(__name__)
 
 T = TypeVar("T", bound=carla.Actor)
+
+
+class ActorInitializeError(Exception):
+    """Raised when the actor failed to initialize."""
+    pass
 
 
 class Actor(Generic[T], CarlaWrapper[T]):
@@ -19,74 +23,41 @@ class Actor(Generic[T], CarlaWrapper[T]):
         self.__simulator = simulator
         self.__on_destroy_callbacks: List[Callable[[], None]] = []
         self.__destroyed = False
+        self.__is_projection = True
+
+    def init(self) -> None:
+        self.__is_projection = False
 
     @classmethod
-    async def spawn(
+    def spawn(
         cls,
+        *args,
         simulator: Simulator,
         blueprint: carla.ActorBlueprint,
         transform: Optional[carla.Transform] = None,
         attach_to: Optional["Actor"] = None,
         **kwargs,
     ):
-        actor = await cls._try_spawn_actor(
-            simulator, blueprint, transform, attach_to, **kwargs
-        )
-        return cls(simulator, actor) if actor else None
-
-    @classmethod
-    async def _try_spawn_actor(
-        cls,
-        simulator: Simulator,
-        blueprint: carla.ActorBlueprint,
-        transform: Optional[carla.Transform] = None,
-        attach_to: Optional["Actor"] = None,
-        **kwargs,
-    ):
-        actor: List[Optional[T]] = []
-
-        def on_spawn(response: carla.command.Response) -> None:
-            if response.has_error():
-                msg = "Failed to spawn %s: %s" % (blueprint, response.error)
-                logger.error(msg)
-                actor.append(None)
-            else:
-                spawned = cast(
-                    Optional[T],
-                    simulator.world.carla.get_actor(response.actor_id)
-                )
-                if not spawned:
-                    logger.error("Failed to get actor %s", response.actor_id)
-                else:
-                    logger.info("Spawn %s", spawned)
-                actor.append(spawned)
-
-        simulator.client.enqueue_command(
-            cls._create_spawn_command(blueprint, transform, attach_to, **kwargs),
-            on_spawn,
-        )
-
-        while not actor:
-            await asyncio.sleep(0.01)
-        return actor[0]
-
-    @staticmethod
-    def _create_spawn_command(
-        blueprint: carla.ActorBlueprint,
-        transform: Optional[carla.Transform] = None,
-        attach_to: Optional["Actor"] = None,
-        **kwargs,
-    ):
-        if not transform:
+        if transform is None:
             transform = carla.Transform(
                 carla.Location(x=0, y=0, z=0), carla.Rotation(yaw=0, pitch=0, roll=0)
             )
-        if attach_to:
-            return carla.command.SpawnActor(
-                blueprint, transform, parent=attach_to.carla, **kwargs
+        parent = attach_to.carla if attach_to is not None else None
+        actor = None
+        try:
+            actor = simulator.world.carla.spawn_actor(
+                blueprint, transform, attach_to=parent
             )
-        else:
-            return carla.command.SpawnActor(blueprint, transform, **kwargs)
+            logger.info("Spawn %s", actor)
+
+            actor = cls(simulator, actor)
+            actor.init(*args, **kwargs)
+            return actor
+        except (RuntimeError, ActorInitializeError) as e:
+            logger.error("Failed to spawn %s: %s", blueprint, e)
+            if actor:
+                actor.destroy()
+            return None
 
     @property
     def simulator(self):
@@ -112,33 +83,31 @@ class Actor(Generic[T], CarlaWrapper[T]):
         """Add a callback when the actor is destroyed."""
         self.__on_destroy_callbacks.append(callback)
 
-    async def destroy(self):
+    def before_destroy(self):
+        ...
+
+    def after_destroy(self):
+        ...
+
+    def destroy(self):
         if self.__destroyed or self.carla and not self.is_alive:
             return
 
         self.__destroyed = True
         actor_desc = str(self.carla)
 
-        done = []
+        self.before_destroy()
 
-        def on_destroy(response: carla.command.Response) -> None:
-            if response.has_error():
-                msg = "Failed to destroy %s: %s" % (actor_desc, response.error)
-                logger.error(msg)
-                done.append(False)
-            else:
-                logger.info("Destroy %s", actor_desc)
-                for callback in self.__on_destroy_callbacks:
-                    callback()
-                done.append(True)
+        success = self.carla.destroy()
+        if success:
+            logger.info("Destroy %s", actor_desc)
+        else:
+            logger.error("Failed to destroy %s", actor_desc)
+        
+        for callback in self.__on_destroy_callbacks:
+            callback()
 
-        self.simulator.client.enqueue_command(
-            carla.command.DestroyActor(self.carla), on_destroy
-        )
-
-        while not done:
-            await asyncio.sleep(0.01)
-        return done[0]
+        self.after_destroy()
 
     @property
     def transform(self) -> carla.Transform:
@@ -194,9 +163,27 @@ class Actor(Generic[T], CarlaWrapper[T]):
         """Add an impulse to the actor."""
         self.carla.add_impulse(impulse)
 
+    def distance(self, other: Union["Actor", carla.Transform, carla.Location]) -> float:
+        """The distance to another actor."""
+        if isinstance(other, carla.Location):
+            return self.location.distance(other)
+        else:
+            return self.location.distance(other.location)
+
+    def distance_2d(self, other: Union["Actor", carla.Transform, carla.Location]) -> float:
+        """The distance to another actor."""
+        if isinstance(other, carla.Location):
+            return self.location.distance_2d(other)
+        else:
+            return self.location.distance_2d(other.location)
+
     def isinstance(self, _type: Type[T]) -> TypeGuard["Actor[T]"]:
         return isinstance(self.carla, _type)
 
     @override
     def __repr__(self):
         return f"{self.carla}"
+
+    def __del__(self):
+        if not self.__is_projection:
+            self.destroy()

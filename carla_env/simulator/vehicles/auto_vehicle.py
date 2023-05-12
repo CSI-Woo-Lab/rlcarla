@@ -1,9 +1,11 @@
 import random
+from typing import List, Optional
 
 import carla
 import numpy as np
 from typing_extensions import override
 
+from carla_env.simulator.sensors.sensor import Sensor
 from carla_env.simulator.simulator import Simulator
 from carla_env.simulator.vehicles.vehicle import Vehicle
 
@@ -11,13 +13,14 @@ from carla_env.simulator.vehicles.vehicle import Vehicle
 class AutoVehicle(Vehicle):
     _LANE_ID_CANDIDATES = [-1, -2, -3, -4]
 
+    @override
+    def init(self):
+        super().init()
+        self.autopilot()
+
     @classmethod
     @override
-    async def spawn(
-        cls,
-        simulator: Simulator,
-        **kwargs,
-    ):
+    def spawn(cls, *args, simulator: Simulator, **kwargs):
         blueprint = cls.__get_blueprint(simulator)
         spawn_points = simulator.world.map.get_spawn_points()
 
@@ -39,13 +42,16 @@ class AutoVehicle(Vehicle):
         else:
             initial_transform = __default__get_initial_transform()
 
-        return await super().spawn(
-            simulator,
-            blueprint,
-            initial_transform,
-            autopilot=True,
-            **kwargs,
-        )
+        vehicle = None
+        while not vehicle:
+            vehicle = super().spawn(
+                *args,
+                simulator,
+                blueprint,
+                initial_transform,
+                **kwargs,
+            )
+        return vehicle
 
     @staticmethod
     def __blueprint_filter(blueprint: carla.ActorBlueprint) -> bool:

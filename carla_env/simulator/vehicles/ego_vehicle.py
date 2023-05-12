@@ -1,9 +1,9 @@
-import asyncio
 from typing import Optional
 
 import carla
 from typing_extensions import override
 
+from carla_env.simulator.actor import ActorInitializeError
 from carla_env.simulator.sensors.camera import CameraSensor
 from carla_env.simulator.sensors.collision import CollisionSensor
 from carla_env.simulator.sensors.lane_invasion import LaneInvasionSensor
@@ -11,26 +11,45 @@ from carla_env.simulator.sensors.lidar import LidarSensor
 from carla_env.simulator.simulator import Simulator
 from carla_env.simulator.spectator import Spectator
 from carla_env.simulator.vehicles.vehicle import Vehicle
-from configs.config import ExperimentConfigs
+from carla_env.utils.config import ExperimentConfigs
+from carla_env.utils.logger import Logging
+from carla_env.utils.vector import to_array
+
+logger = Logging.get_logger(__name__)
 
 
 class EgoVehicle(Vehicle):
-    def init(
-        self,
-        config: ExperimentConfigs,
-        lidar_sensor: LidarSensor,
-        camera: CameraSensor,
-        collision_sensor: CollisionSensor,
-        lane_invasion_sensor: LaneInvasionSensor,
-    ):
+    @override
+    def init(self, config: ExperimentConfigs):
+        super().init()
+
         self.__vehicle_type = config.vehicle_type
+
+        lidar_sensor = self.add_sensor(LidarSensor, config=config)
+        camera = self.add_sensor(CameraSensor, config=config)
+        collision_sensor = self.add_sensor(CollisionSensor)
+        lane_invasion_sensor = self.add_sensor(LaneInvasionSensor)
+
+        if (
+            lidar_sensor is None
+            or camera is None
+            or collision_sensor is None
+            or lane_invasion_sensor is None
+        ):
+            raise ActorInitializeError("Failed to spawn sensors of ego vehicle")
+
         self.__lidar_sensor = lidar_sensor
         self.__camera = camera
         self.__collision_sensor = collision_sensor
         self.__lane_invasion_sensor = lane_invasion_sensor
 
+        self.velocity = carla.Vector3D(x=.0, y=.0, z=.0)
+        self.angular_velocity = carla.Vector3D(x=.0, y=.0, z=.0)
+
+        self.simulator.world.spectator.follow(self, Spectator.FollowMode.ABOVE)
+
     @classmethod
-    async def spawn(
+    def spawn(
         cls,
         simulator: Simulator,
         config: ExperimentConfigs,
@@ -41,53 +60,17 @@ class EgoVehicle(Vehicle):
         )
         blueprint.set_attribute("role_name", "ego")
 
-        vehicle = await super().spawn(
+        return super().spawn(
+            config,
             simulator=simulator,
             blueprint=blueprint,
             transform=initial_transform,
         )
 
-        if not vehicle:
-            return None
-
-        lidar_sensor, camera, collision_sensor, lane_invasion = await asyncio.gather(
-            LidarSensor.spawn(simulator, config, vehicle),
-            CameraSensor.spawn(simulator, config, vehicle),
-            CollisionSensor.spawn(simulator, vehicle),
-            LaneInvasionSensor.spawn(simulator, vehicle),
-        )
-
-        if (
-            lidar_sensor is None
-            or camera is None
-            or collision_sensor is None
-            or lane_invasion is None
-        ):
-            return None
-
-        vehicle.init(config, lidar_sensor, camera, collision_sensor, lane_invasion)
-
-        vehicle.velocity = carla.Vector3D(x=.0, y=.0, z=.0)
-        vehicle.angular_velocity = carla.Vector3D(x=.0, y=.0, z=.0)
-
-        simulator.world.get_spectator().follow(vehicle, Spectator.FollowMode.ABOVE)
-
-        return vehicle
-
     def reset(self):
         self.stop()
         self.collision_sensor.reset()
         self.lane_invasion_sensor.reset()
-
-    @override
-    async def destroy(self):
-        await asyncio.gather(
-            self.__lidar_sensor.destroy(),
-            self.__camera.destroy(),
-            self.__collision_sensor.destroy(),
-            self.__lane_invasion_sensor.destroy(),
-        )
-        await super().destroy()
 
     @property
     def lidar_sensor(self) -> LidarSensor:
@@ -113,9 +96,19 @@ class EgoVehicle(Vehicle):
     def vehicle_type(self):
         return self.__vehicle_type
 
-    def apply_control(self, control: carla.VehicleControl):
-        wetness = self.simulator.world.weather.precipitation / 100.0
-        diff = wetness / 9.5
-        control.throttle = min(control.throttle + diff, 1.0)
-        control.brake = max(control.brake - diff, 0.0)
-        return super().apply_control(control)
+    # def apply_control(self, control: carla.VehicleControl):
+    #     wetness = self.simulator.world.weather.precipitation / 100.0
+    #     diff = wetness / 9.5
+    #     control.throttle = min(control.throttle + diff, 1.0)
+    #     control.brake = max(control.brake - diff, 0.0)
+    #     return super().apply_control(control)
+
+    def get_observation(self):
+        return {
+            "acceleration": to_array(self.acceleration),
+            "velocity": to_array(self.velocity),
+            "angular_velocity": to_array(self.angular_velocity),
+            "location": to_array(self.location),
+            "rotation": to_array(self.rotation),
+            "forward_vector": to_array(self.rotation.get_forward_vector()),
+        }

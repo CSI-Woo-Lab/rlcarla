@@ -1,53 +1,29 @@
-from typing import Optional
+from typing import List, Optional, Type, TypeVar
 
 import carla
 from typing_extensions import override
 
 from carla_env.simulator.actor import Actor
-from carla_env.simulator.simulator import Simulator
-from utils.logger import Logging
+from carla_env.simulator.sensors.sensor import Sensor
+from carla_env.utils.logger import Logging
 
 logger = Logging.get_logger(__name__)
 
+T = TypeVar("T", bound=Sensor)
+
 
 class Vehicle(Actor[carla.Vehicle]):
-    @classmethod
-    @override
-    async def spawn(
-        cls,
-        simulator: Simulator,
-        blueprint: carla.ActorBlueprint,
-        transform: Optional[carla.Transform] = None,
-        attach_to: Optional[Actor] = None,
-        autopilot: bool = False,
-        **kwargs,
-    ):
-        actor = await cls._try_spawn_actor(
-            simulator,
-            blueprint,
-            transform,
-            attach_to,
-            autopilot=autopilot,
-            **kwargs,
-        )
-        return cls(simulator, actor) if actor else None
+    def init(self):
+        super().init()
+        self.__sensors = []
 
-    @staticmethod
-    def _create_spawn_command(
-        blueprint: carla.ActorBlueprint,
-        transform: carla.Transform,
-        attach_to: Optional[Actor] = None,
-        autopilot: bool = False,
-        **kwargs,
-    ):
-        cmd = Actor._create_spawn_command(blueprint, transform, attach_to, **kwargs)
-        if autopilot:
-            cmd = cmd.then(
-                carla.command.SetAutopilot(carla.command.FutureActor, autopilot)
-            )
-        return cmd
+    def autopilot(self):
+        self.carla.set_autopilot(True)
 
-    def get_contorl(self) -> carla.VehicleControl:
+    def disable_autopilot(self):
+        self.carla.set_autopilot(False)
+
+    def get_control(self) -> carla.VehicleControl:
         return self.carla.get_control()
 
     def get_physic_control(self) -> carla.VehiclePhysicsControl:
@@ -79,3 +55,23 @@ class Vehicle(Actor[carla.Vehicle]):
     @angular_velocity.setter
     def angular_velocity(self, angular_velocity: carla.Vector3D):
         self.carla.set_target_angular_velocity(angular_velocity)
+
+    @property
+    def sensors(self) -> List[Sensor]:
+        return self.__sensors
+
+    def add_sensor(self, sensor_type: Type[T], **kwargs) -> Optional[T]:
+        sensor = sensor_type.spawn(self.simulator, parent=self, **kwargs)
+        if sensor is None:
+            return None
+        self.attach_sensor(sensor)
+        return sensor
+
+    def attach_sensor(self, sensor: Sensor):
+        self.__sensors.append(sensor)
+
+    @override
+    def before_destroy(self):
+        for sensor in self.__sensors:
+            sensor.destroy()
+        return super().before_destroy()

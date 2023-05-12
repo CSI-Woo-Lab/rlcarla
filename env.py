@@ -11,8 +11,8 @@ from typing_extensions import Concatenate, ParamSpec
 
 from carla_env.behavior_cloning import behavior_cloning
 from carla_env.collect_data import collect_data
-from configs.config import parse_config
-from utils.logger import Logging
+from carla_env.utils.config import parse_config
+from carla_env.utils.logger import Logging
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -42,7 +42,7 @@ class Program:
         print("Logging to", logging_path)
         Logging.setup(
             filepath=logging_path,
-            level=logging.INFO,
+            level=logging.DEBUG,
             formatter="(%(asctime)s) [%(levelname)s] %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )

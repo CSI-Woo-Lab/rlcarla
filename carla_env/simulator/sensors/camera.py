@@ -7,10 +7,10 @@ from typing_extensions import override
 from carla_env.simulator.actor import Actor
 from carla_env.simulator.sensors.sensor import Sensor
 from carla_env.simulator.simulator import Simulator
-from configs.config import ExperimentConfigs
+from carla_env.utils.config import ExperimentConfigs
 
 
-class CameraSensor(Sensor):
+class CameraSensor(Sensor[carla.Image]):
     def init(self, config: ExperimentConfigs):
         self.__vision_size = config.vision_size
         self.__image = np.zeros(
@@ -20,7 +20,7 @@ class CameraSensor(Sensor):
 
     @classmethod
     @override
-    async def spawn(
+    def spawn(
         cls,
         simulator: Simulator,
         config: ExperimentConfigs,
@@ -33,7 +33,8 @@ class CameraSensor(Sensor):
 
         parent_height = parent.carla.bounding_box.extent.z * 2
         
-        sensor = await super().spawn(
+        return super().spawn(
+            config,
             simulator=simulator,
             blueprint=blueprint,
             transform=carla.Transform(
@@ -42,11 +43,6 @@ class CameraSensor(Sensor):
             ),
             attach_to=parent,
         )
-        if not sensor:
-            return None
-
-        sensor.init(config)
-        return sensor
 
     def _callback__on_image(self, data: carla.SensorData):
         image: np.ndarray = np.frombuffer(

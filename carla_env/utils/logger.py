@@ -4,7 +4,7 @@ This module provides a simple logging utility that can be used to log to a file
 and stdout. It is based on the logging module from the standard library.
 
 Example:
-    >>> from utils.logger import Logging
+    >>> from carla_env.utils.logger import Logging
     >>> Logging.setup(filepath="outputs.log", level=logging.INFO)
     >>> logger = Logging.get_logger("my_logger")
     >>> logger.info("Hello world!")

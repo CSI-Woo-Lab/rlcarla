@@ -6,8 +6,8 @@ from agents.navigation.global_route_planner_dao import GlobalRoutePlannerDAO
 from carla_env.simulator.route_selector import RouteSelector
 from carla_env.simulator.vehicles.vehicle import Vehicle
 from carla_env.simulator.world import World
-from configs.config import ExperimentConfigs
-from utils.route_planner import CustomGlobalRoutePlanner
+from carla_env.utils.config import ExperimentConfigs
+from carla_env.utils.route_planner import CustomGlobalRoutePlanner
 
 
 class RouteManager:

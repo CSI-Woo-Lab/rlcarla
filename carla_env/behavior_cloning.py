@@ -11,11 +11,11 @@ import tqdm
 
 from carla_env.base import BaseCarlaEnvironment
 from carla_env.dataset import load_datasets
-from configs.config import ExperimentConfigs
+from carla_env.utils.config import ExperimentConfigs
+from carla_env.utils.lidar import generate_lidar_bin
+from carla_env.utils.vector import to_array
 from offline_baselines_jax.bc.bc import BC
 from offline_baselines_jax.bc.policies import MultiInputPolicy
-from utils.lidar import generate_lidar_bin
-from utils.vector import to_array
 
 Params = flax.core.FrozenDict[str, Any]
 

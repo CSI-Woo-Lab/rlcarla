@@ -7,10 +7,10 @@ from typing_extensions import override
 from carla_env.simulator.actor import Actor
 from carla_env.simulator.sensors.sensor import Sensor
 from carla_env.simulator.simulator import Simulator
-from utils.lock import lock_release_after
+from carla_env.utils.lock import lock_release_after
 
 
-class LaneInvasionSensor(Sensor):
+class LaneInvasionSensor(Sensor[carla.LaneInvasionEvent]):
     def init(self):
         self.__lane_types: Set[carla.LaneMarkingType] = set()
         self.__lock = Lock()
@@ -19,7 +19,7 @@ class LaneInvasionSensor(Sensor):
 
     @classmethod
     @override
-    async def spawn(
+    def spawn(
         cls,
         simulator: Simulator,
         parent: Actor,
@@ -27,14 +27,11 @@ class LaneInvasionSensor(Sensor):
         blueprint_library = simulator.world.blueprint_library
         blueprint = blueprint_library.find("sensor.other.lane_invasion")
         
-        sensor = await super().spawn(
-            simulator, blueprint, attach_to=parent
+        return super().spawn(
+            simulator=simulator,
+            blueprint=blueprint,
+            attach_to=parent,
         )
-        if not sensor:
-            return None
-
-        sensor.init()
-        return sensor
 
     def reset(self):
         while self.__lock.locked():
@@ -44,9 +41,9 @@ class LaneInvasionSensor(Sensor):
         lock_release_after(self.__lock, 0.1)
 
     @override
-    async def destroy(self) -> None:
+    def destroy(self) -> None:
         self.reset()
-        await super().destroy()
+        super().destroy()
 
     def _callback__on_invasion(self, data: carla.SensorData):
         if self.__lock.locked():

@@ -1,12 +1,10 @@
-import asyncio
-from threading import Thread
 from typing import Callable, Iterable, Optional
 
 import carla
 
 from carla_env.simulator.carla_wrapper import CarlaWrapper
 from carla_env.simulator.simulator import Simulator
-from utils.logger import Logging
+from carla_env.utils.logger import Logging
 
 logger = Logging.get_logger(__name__)
 
@@ -40,6 +38,11 @@ class World(CarlaWrapper[carla.World]):
         from carla_env.simulator.spectator import Spectator
 
         return Spectator(self.carla.get_spectator())
+
+    @property
+    def spectator(self):
+        """The spectator of the simulator."""
+        return self.get_spectator()
 
     def get_vehicles(self):
         from carla_env.simulator.vehicles.vehicle import Vehicle

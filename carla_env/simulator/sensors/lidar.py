@@ -1,15 +1,13 @@
-from typing import Optional
-
 import carla
 from typing_extensions import override
 
 from carla_env.simulator.actor import Actor
 from carla_env.simulator.sensors.sensor import Sensor
 from carla_env.simulator.simulator import Simulator
-from configs.config import ExperimentConfigs
+from carla_env.utils.config import ExperimentConfigs
 
 
-class LidarSensor(Sensor):
+class LidarSensor(Sensor[carla.LidarMeasurement]):
     def init(self, config: ExperimentConfigs):
         self.__upper_fov = config.lidar.upper_fov
         self.__lower_fov = config.lidar.lower_fov
@@ -22,7 +20,7 @@ class LidarSensor(Sensor):
 
     @classmethod
     @override
-    async def spawn(
+    def spawn(
         cls,
         simulator: Simulator,
         config: ExperimentConfigs,
@@ -48,14 +46,13 @@ class LidarSensor(Sensor):
             "points_per_second", str(config.lidar.points_per_second)
         )
 
-        sensor = await super().spawn(
-            simulator, blueprint, cls.__get_initial_transform(), parent
+        return super().spawn(
+            config,
+            simulator=simulator,
+            blueprint=blueprint,
+            transform=cls.__get_initial_transform(),
+            attach_to=parent,
         )
-        if not sensor:
-            return None
-
-        sensor.init(config)
-        return sensor
 
     @staticmethod
     def __get_initial_transform():

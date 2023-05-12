@@ -17,10 +17,9 @@ from agents.tools.misc import is_within_distance_ahead
 from carla_env.dataset import Dataset, load_datasets
 from carla_env.simulator.actor import Actor
 from carla_env.simulator.simulator import Simulator
-from carla_env.weathers import WEATHERS
-from configs.config import ExperimentConfigs
-from utils.carla_sync_mode import CarlaSyncMode
-from utils.roaming_agent import RoamingAgent
+from carla_env.utils.carla_sync_mode import CarlaSyncMode
+from carla_env.utils.config import ExperimentConfigs
+from carla_env.utils.roaming_agent import RoamingAgent
 
 
 class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
@@ -73,7 +72,7 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
         self.lights_list = self.sim.world.get_traffic_lights()
 
     def reset_simulator(self):
-        asyncio.run(self.sim.reset())
+        self.sim.reset()
 
     def reset(self):
         self.reset_simulator()
@@ -287,7 +286,7 @@ class BaseCarlaEnvironment(abc.ABC, gym.Env[dict, np.ndarray]):
         raise NotImplementedError
 
     def finish(self):
-        asyncio.run(self.sim.finish())
+        self.sim.finish()
         pygame.quit()
 
     def get_dataset(self) -> List[Dataset]:

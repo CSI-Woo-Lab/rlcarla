@@ -2,7 +2,7 @@ from typing import List
 
 import numpy as np
 
-from utils.coordinates import cart2pol
+from carla_env.utils.coordinates import cart2pol
 
 
 def generate_lidar_bin(lidar_sensor, num_theta_bin: float, env_range: float):
