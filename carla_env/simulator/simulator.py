@@ -99,6 +99,8 @@ class Simulator(gym.Env[dict, np.ndarray]):
         self.__steps = 0
         self.__prev_reward = None
 
+        return self.step()[0]
+
     @override
     def step(self, action: Optional[np.ndarray] = None):
         self.__steps += 1
