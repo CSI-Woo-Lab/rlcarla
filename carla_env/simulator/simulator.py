@@ -29,6 +29,7 @@ class Simulator(gym.Env[dict, np.ndarray]):
         from carla_env.simulator.route_manager import RouteManager
         from carla_env.simulator.vehicles.auto_vehicle import AutoVehicle
         from carla_env.simulator.vehicles.ego_vehicle import EgoVehicle
+        from carla_env.simulator.visualizer import Visualizer
 
         self.__config = config
 
@@ -45,6 +46,8 @@ class Simulator(gym.Env[dict, np.ndarray]):
 
         self.__auto_vehicles: Optional[List[AutoVehicle]] = None
         self.__ego_vehicle: Optional[EgoVehicle] = None
+
+        self.__visualizer = Visualizer(self, config)
 
         self.action_space = gym.spaces.Box(shape=(2,), low=-1, high=1)
         self.observation_space = gym.spaces.Dict(
@@ -106,9 +109,10 @@ class Simulator(gym.Env[dict, np.ndarray]):
         self.__steps += 1
 
         if action is not None:
-            throttle = max(action[0], 0)
-            brake = -min(action[0], 0)
-            steer = random.random() * 2 - 1
+            acc = float(action[0])
+            throttle = max(acc, 0)
+            brake = -min(acc, 0)
+            steer = float(action[1])
             brake = brake if brake > 0.01 else 0
         else:
             throttle = 0

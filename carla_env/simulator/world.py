@@ -1,4 +1,4 @@
-from typing import Callable, Iterable, Optional
+from typing import Callable, Iterable, Optional, Tuple, Union
 
 import carla
 
@@ -87,9 +87,9 @@ class World(CarlaWrapper[carla.World]):
         """Register a callback to be called every tick."""
         return self.carla.on_tick(callback)
 
-    def remove_on_tick(self, callback: Callable[[carla.WorldSnapshot], None]):
+    def remove_on_tick(self, callback_id: int):
         """Remove a callback from being called every tick."""
-        self.carla.remove_on_tick(callback)
+        self.carla.remove_on_tick(callback_id)
 
     def get_settings(self):
         """Get the settings of the world."""
@@ -98,6 +98,35 @@ class World(CarlaWrapper[carla.World]):
     def apply_settings(self, settings: carla.WorldSettings):
         """Apply the settings to the world."""
         self.carla.apply_settings(settings)
+
+    def draw_arrow(
+        self,
+        begin: carla.Location,
+        end: carla.Location,
+        thickness: float = 0.1,
+        arrow_size: float = 0.1,
+        life_time: Optional[float] = None,
+    ):
+        """Draw an arrow in the world."""
+        if life_time is None:
+            life_time = self.carla.get_settings().fixed_delta_seconds * 1.1
+        self.carla.debug.draw_arrow(
+            begin, end, thickness=thickness, arrow_size=arrow_size, life_time=life_time
+        )
+
+    def draw_point(
+        self,
+        location: carla.Location,
+        size: float = 0.1,
+        color: Union[Tuple[int, int, int], Tuple[int, int, int, int]] = (255, 0, 0),
+        life_time: Optional[float] = None,
+    ):
+        """Draw a point in the world."""
+        if life_time is None:
+            life_time = self.carla.get_settings().fixed_delta_seconds * 1.1
+        self.carla.debug.draw_point(
+            location, size=size, color=carla.Color(*color), life_time=life_time
+        )
 
     @property
     def map(self):

@@ -19,6 +19,20 @@ class LidarConfigs:
 
 
 @dataclass
+class VisualizationConfigs:
+    """Arguments for visualization."""
+
+    draw_path: bool = False
+    """Whether to draw the path."""
+
+    draw_velocity: bool = False
+    """Whether to draw the velocity."""
+
+    draw_fps: bool = False
+    """Whether to draw the FPS."""
+
+
+@dataclass
 class ExperimentConfigs:
     """Arguments for running env.py."""
 
@@ -73,6 +87,9 @@ class ExperimentConfigs:
 
     fps: int = 30
     """FPS of the simulator."""
+
+    visual: VisualizationConfigs = field(default_factory=VisualizationConfigs)
+    """Visualization configurations."""
 
 
 def check_route_list(routes: Any) -> List[Tuple[int, int]]:
@@ -155,7 +172,7 @@ def parse_config(filename: Union[str, Path]):
 
         if "lidar" in config:
             config["lidar"] = LidarConfigs(**config["lidar"])
-        else:
-            config["lidar"] = LidarConfigs()
+        if "visual" in config:
+            config["visual"] = VisualizationConfigs(**config["visual"])
 
         return ExperimentConfigs(**config)

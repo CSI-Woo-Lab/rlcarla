@@ -25,3 +25,6 @@ lidar:
   dropoff_intensity_limit: 0.2
   dropoff_zero_intensity: 0.2
   points_per_second: 120_000
+visual:
+  draw_path: True
+  draw_velocity: True
