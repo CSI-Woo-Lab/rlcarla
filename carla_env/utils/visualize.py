@@ -59,7 +59,6 @@ def draw_path(
     observations = dataset["observations"]
     sensor = observations["sensor"]
     lidar_bin = dataset.get("lidar_bin", 80)
-    offset = lidar_bin + 9
 
     def transform(p: np.ndarray):
         """
@@ -85,6 +84,7 @@ def draw_path(
         return p
 
     # Draw path
+    offset = lidar_bin + 12
     path = transform(
         sensor[:, offset:(offset + 2)]
     ).astype(np.int32).reshape((-1, 1, 2))
@@ -98,10 +98,11 @@ def draw_path(
     cv2.circle(image, tuple(end), 12, (128, 0, 128), -1, lineType=cv2.LINE_AA)
 
     # Draw target location
-    target = transform(
-        sensor[-1, (offset + 12):(offset + 14)][None, :]
-    ).astype(np.int32).reshape(-1)
-    cv2.circle(image, tuple(target), 12, (0, 0, 255), -1, lineType=cv2.LINE_AA)
+    # offset += 6
+    # target = transform(
+    #     sensor[-1, (offset):(offset + 2)][None, :]
+    # ).astype(np.int32).reshape(-1)
+    # cv2.circle(image, tuple(target), 12, (0, 0, 255), -1, lineType=cv2.LINE_AA)
 
     # Put text of the reason of done
     info = dataset["infos"][-1]
