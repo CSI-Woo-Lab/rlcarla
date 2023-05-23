@@ -6,9 +6,11 @@ from typing import (Dict, Iterable, List, Optional, Sequence, Tuple, Union,
 import cv2
 import fire
 import numpy as np
+import scipy.stats
 import seaborn as sns
 from matplotlib import pyplot as plt
 from tqdm import tqdm
+from typing_extensions import Literal, Required, TypedDict, override
 
 from carla_env.dataset import Dataset
 
@@ -132,10 +134,20 @@ def draw_path(
         return image
 
 
+class PlottingParameter(TypedDict, total=False):
+    datasets: Required[Sequence[Dataset]]
+    label: str
+    color: str
+
+
 def plot_action_distribution(
-    *datasets: Sequence[Dataset],
-    labels: Optional[Sequence[str]] = None,
+    datasets: Iterable[PlottingParameter],
     output_filepath: Optional[Union[str, Path]] = None,
+    x_range: Dict[str, Tuple[float, float]] = {},
+    y_max: Dict[str, float] = {},
+    title_font_size: float = 15,
+    y_label_font_size: float = 15,
+    sparse: bool = False,
 ):
     """Plot the action distribution of the dataset as a frequency polygon.
     
@@ -146,54 +158,97 @@ def plot_action_distribution(
     It plots to the current axes if `output_filepath` is None. Otherwise, it saves the
     figure to the `output_filepath`.
     
-    Args:
-        datasets (Dataset): Datasets
-        labels (Iterable[str]): Labels of the datasets
-        output_filepath (str | Path): Output filepath
-    
     """
     if isinstance(output_filepath, Path):
         output_filepath = str(output_filepath)
 
-    if labels is None:
-        labels = [f"Dataset {i}" for i in range(len(datasets))]
+    labels = [param.get("label", f"Dataset {i}") for i, param in enumerate(datasets)]
+    colors = [param.get("color", f"blue") for param in datasets]
 
-    if len(datasets) != len(labels):
-        raise ValueError(
-            f"Length of datasets ({len(datasets)}) and labels ({len(labels)}) do not "
-            f"match."
-        )
-
-    fig, axes = plt.subplots(4, 3, figsize=(15, 20))
     freq: Dict[str, Dict[str, np.ndarray]] = {
         "throttle": {}, "steering": {}, "brake": {}
     }
 
     for dataset, label in zip(datasets, labels):
         actions = np.concatenate(list(data["actions"] for data in tqdm(
-            dataset, desc=f"Loading {label} dataset"
+            dataset["datasets"], desc=f"Loading {label} dataset"
         )), axis=0)
         freq["throttle"][label] = actions[:, 0]
         freq["steering"][label] = actions[:, 1]
         freq["brake"][label] = actions[:, 2]
 
     print("Plotting ...")
-    for i, y_lim in enumerate((15, 5, 0.5, 0.05)):
+
+    rows = len(labels) if sparse else 1
+    fig, axes = plt.subplots(rows, 3, figsize=(15, rows * 5))
+
+    x_range = {
+        **{
+            "throttle": (0, 1),
+            "steering": (-1, 1),
+            "brake": (0, 1),
+        },
+        **x_range,
+    }
+    x_range = {
+        key: (
+            max(min(v.min() for v in value.values()), x_min),
+            min(max(v.max() for v in value.values()), x_max),
+        )
+        for (key, value), (x_min, x_max) in zip(freq.items(), x_range.values())
+    }
+    x_space = {
+        key: np.linspace(*r, 1000) for key, r in x_range.items()
+    }
+    y_values: Dict[str, np.ndarray] = {}
+    for key, value in freq.items():
+        if key in y_max:
+            continue
+        y_values[key] = np.zeros(1000)
+        for v in value.values():
+            try:
+                kde = scipy.stats.gaussian_kde(v)(x_space[key])
+            except:
+                kde = np.zeros(1000)
+            y_values[key] += kde
+
+    # Get max of kde without outliers
+    y_max = {
+        **y_max,
+        **{
+            key: float(y[np.abs(y - y.mean()) < y.std()].max())
+            for key, y in y_values.items()
+        },
+    }
+
+    y_labels = labels if sparse else ("Density",)
+    for i, (dataset_label, color) in enumerate(zip(y_labels, colors)):
         for j, (key, value) in enumerate(freq.items()):
-            ax = axes[i][j]    # type: ignore
-            ax.set_title(key.capitalize())
-            ax.set_xlabel("Action")
-            ax.set_ylabel("Frequency")
+            if sparse:
+                ax = axes[i][j]    # type: ignore
+            else:
+                ax = axes[j]    # type: ignore
+            if i == 0:
+                ax.set_title(key.capitalize()).set_size(title_font_size)
+            if i == len(y_labels) - 1:
+                ax.set_xlabel("Action")
+            if j == 0:
+                ax.set_ylabel(dataset_label.capitalize()).set_size(y_label_font_size)
+            else:
+                ax.set_ylabel(" ")
 
-            x_min = min(v.min() for v in value.values())
-            x_max = max(v.max() for v in value.values())
-            margin = (x_max - x_min) * 0.1
-            ax.set_xlim(x_min - margin, x_max + margin)
+            x_min, x_max = x_range[key]
 
-            ax.set_ylim(0, y_lim)
+            ax.set_xlim(x_min, x_max)
+
+            ax.set_ylim(0, y_max[key])
             ax.grid(True)
 
-            sns.kdeplot(data=value, ax=ax, fill=True, common_norm=False, alpha=0.5)
+            params = {"ax": ax, "fill": True, "common_norm": False, "alpha": 0.5}
+            if sparse:
+                sns.kdeplot(data=value[dataset_label], color=color, **params)
+            else:
+                sns.kdeplot(data=value, **params)
 
     if output_filepath is None:
         plt.show()
@@ -202,20 +257,25 @@ def plot_action_distribution(
 
 
 class DatasetSequence(Sequence[Dataset]):
-    def __init__(self, datasets: Iterable[Union[str, Path]]):
+    def __init__(self, datasets: Iterable[Union[str, Path]], no_validate: bool = False):
         self.__datasets: List[str] = []
-        for filename in tqdm(datasets, desc="Validating datasets"):
-            try:
-                with open(filename, "rb") as f:
-                    pkl.load(f)
-            except pkl.UnpicklingError as e:
-                print(f"Failed to load {filename}: {e}")
-            else:
-                self.__datasets.append(str(filename))
+        if not no_validate:
+            for filename in tqdm(datasets, desc="Validating datasets"):
+                try:
+                    with open(filename, "rb") as f:
+                        pkl.load(f)
+                except pkl.UnpicklingError as e:
+                    print(f"Failed to load {filename}: {e}")
+                else:
+                    self.__datasets.append(str(filename))
+        else:
+            self.__datasets = [str(filename) for filename in datasets]
 
+    @override
     def __len__(self):
         return len(self.__datasets)
 
+    @override
     def __getitem__(self, idx: int) -> Dataset:
         with open(self.__datasets[idx], "rb") as f:
             return pkl.load(f)
@@ -248,6 +308,7 @@ class Program:
         self,
         *srcs: str,
         dst: Optional[str] = None,
+        sparse: bool = False,
     ):
         if len(srcs) % 2 != 0:
             raise ValueError("srcs must be a list of (dataset, label) pairs.")
@@ -272,9 +333,12 @@ class Program:
             self.__labels.append(label)
 
         plot_action_distribution(
-            *self.__srcs,
-            labels=self.__labels,
+            (
+                {"datasets": datasets, "label": label}
+                for datasets, label in zip(self.__srcs, self.__labels)
+            ),
             output_filepath=self.__dst,
+            sparse=sparse,
         )
 
 
